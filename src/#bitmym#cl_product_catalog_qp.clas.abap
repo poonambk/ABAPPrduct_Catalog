@@ -322,56 +322,32 @@ CLASS /BITMYM/CL_PRODUCT_CATALOG_QP IMPLEMENTATION.
       RETURN.
     ENDIF.
 
+    DATA(lv_has_row_limit) = xsdbool( iv_fetch_rows > 0 ).
+
     IF iv_where IS INITIAL.
-      IF iv_apply_node_filter = abap_true.
-        IF iv_fetch_rows > 0.
-          SELECT (iv_select_list)
-            FROM (iv_from_syntax)
-            WHERE nodeid IN @it_nodeid_range
-            ORDER BY (iv_orderby)
-            INTO CORRESPONDING FIELDS OF TABLE @ct_data
-            UP TO @iv_fetch_rows ROWS.
-        ELSE.
-          SELECT (iv_select_list)
-            FROM (iv_from_syntax)
-            WHERE nodeid IN @it_nodeid_range
-            ORDER BY (iv_orderby)
-            INTO CORRESPONDING FIELDS OF TABLE @ct_data.
-        ENDIF.
-      ELSEIF iv_fetch_rows > 0.
+      IF lv_has_row_limit = abap_true.
         SELECT (iv_select_list)
           FROM (iv_from_syntax)
+          WHERE ( @iv_apply_node_filter = @abap_false
+                  OR nodeid IN @it_nodeid_range )
           ORDER BY (iv_orderby)
           INTO CORRESPONDING FIELDS OF TABLE @ct_data
           UP TO @iv_fetch_rows ROWS.
       ELSE.
         SELECT (iv_select_list)
           FROM (iv_from_syntax)
+          WHERE ( @iv_apply_node_filter = @abap_false
+                  OR nodeid IN @it_nodeid_range )
           ORDER BY (iv_orderby)
           INTO CORRESPONDING FIELDS OF TABLE @ct_data.
       ENDIF.
     ELSE.
-      IF iv_apply_node_filter = abap_true.
-        IF iv_fetch_rows > 0.
-          SELECT DISTINCT (iv_select_list)
-            FROM (iv_from_syntax)
-            WHERE (iv_where)
-              AND nodeid IN @it_nodeid_range
-            ORDER BY (iv_orderby)
-            INTO CORRESPONDING FIELDS OF TABLE @ct_data
-            UP TO @iv_fetch_rows ROWS.
-        ELSE.
-          SELECT DISTINCT (iv_select_list)
-            FROM (iv_from_syntax)
-            WHERE (iv_where)
-              AND nodeid IN @it_nodeid_range
-            ORDER BY (iv_orderby)
-            INTO CORRESPONDING FIELDS OF TABLE @ct_data.
-        ENDIF.
-      ELSEIF iv_fetch_rows > 0.
+      IF lv_has_row_limit = abap_true.
         SELECT DISTINCT (iv_select_list)
           FROM (iv_from_syntax)
           WHERE (iv_where)
+            AND ( @iv_apply_node_filter = @abap_false
+                  OR nodeid IN @it_nodeid_range )
           ORDER BY (iv_orderby)
           INTO CORRESPONDING FIELDS OF TABLE @ct_data
           UP TO @iv_fetch_rows ROWS.
@@ -379,6 +355,8 @@ CLASS /BITMYM/CL_PRODUCT_CATALOG_QP IMPLEMENTATION.
         SELECT DISTINCT (iv_select_list)
           FROM (iv_from_syntax)
           WHERE (iv_where)
+            AND ( @iv_apply_node_filter = @abap_false
+                  OR nodeid IN @it_nodeid_range )
           ORDER BY (iv_orderby)
           INTO CORRESPONDING FIELDS OF TABLE @ct_data.
       ENDIF.
