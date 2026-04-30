@@ -26,6 +26,7 @@ define view entity /BITMYM/C_PRODUCT_CATALOG_ADV
       H.NodeObjectType,
       @Search.defaultSearchElement: true
       H.ParentText,
+      @Search.defaultSearchElement: true
       _Characteristics,
       _Child,
       @Search.defaultSearchElement: true
