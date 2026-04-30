@@ -7,22 +7,35 @@ CLASS /BITMYM/CL_PRODUCT_CATALOG_QP DEFINITION
     INTERFACES if_rap_query_provider.
 
   PRIVATE SECTION.
+    CONSTANTS:
+      gc_entity_product_catalog TYPE string VALUE '/BITMYM/C_PRODUCT_CATALOG',
+      gc_entity_charc_basiclist TYPE string VALUE '/BITMYM/C_CHARCBASICLIST',
+      gc_source_product_hry     TYPE string VALUE '/BITMYM/I_PRODUCT_CATALOG_HRY',
+      gc_source_class_charac    TYPE string VALUE '/BITMYM/I_CLASS_CHARAC',
+      gc_filter_parentnodeid    TYPE string VALUE 'PARENTNODEID',
+      gc_filter_maxdepth_upper  TYPE string VALUE 'MAXDEPTH',
+      gc_filter_maxdepth_mixed  TYPE string VALUE 'MaxDepth',
+      gc_filter_p_max_depth     TYPE string VALUE 'P_MAX_DEPTH',
+      gc_filter_maxdepth_lower  TYPE string VALUE 'maxdepth',
+      gc_assoc_characteristics  TYPE string VALUE '_CHARACTERISTICS',
+      gc_assoc_child            TYPE string VALUE '_CHILD'.
+
     TYPES:
       BEGIN OF ty_product_catalog,
-        nodeid           TYPE /bitmym/i_product_catalog_hry-nodeid,
-        parentnodeid     TYPE /bitmym/i_product_catalog_hry-parentnodeid,
-        nodetext         TYPE /bitmym/i_product_catalog_hry-nodetext,
-        nodeclass        TYPE /bitmym/i_product_catalog_hry-nodeclass,
-        nodeobjecttype   TYPE /bitmym/i_product_catalog_hry-nodeobjecttype,
-        maxdepth         TYPE /bitmym/i_product_catalog_adv-maxdepth,
-        parenttext       TYPE /bitmym/i_product_catalog_hry-parenttext,
-        hierarchylevel   TYPE /bitmym/i_product_cat_hry_adv-hierarchylevel,
+        nodeid             TYPE /bitmym/i_product_catalog_hry-nodeid,
+        parentnodeid       TYPE /bitmym/i_product_catalog_hry-parentnodeid,
+        nodetext           TYPE /bitmym/i_product_catalog_hry-nodetext,
+        nodeclass          TYPE /bitmym/i_product_catalog_hry-nodeclass,
+        nodeobjecttype     TYPE /bitmym/i_product_catalog_hry-nodeobjecttype,
+        maxdepth           TYPE /bitmym/i_product_catalog_adv-maxdepth,
+        parenttext         TYPE /bitmym/i_product_catalog_hry-parenttext,
+        hierarchylevel     TYPE /bitmym/i_product_cat_hry_adv-hierarchylevel,
         hierarchyparentrank TYPE /bitmym/i_product_cat_hry_adv-hierarchyparentrank,
-        hierarchytreesize TYPE /bitmym/i_product_cat_hry_adv-hierarchytreesize,
-        drillstate       TYPE /bitmym/c_product_catalog_adv-drillstate,
-        statusflag       TYPE /bitmym/i_product_catalog_adv-statusflag,
-        _characteristics TYPE STANDARD TABLE OF /bitmym/i_classification WITH EMPTY KEY,
-        _child           TYPE STANDARD TABLE OF /bitmym/i_product_catalog_hry WITH EMPTY KEY,
+        hierarchytreesize  TYPE /bitmym/i_product_cat_hry_adv-hierarchytreesize,
+        drillstate         TYPE /bitmym/c_product_catalog_adv-drillstate,
+        statusflag         TYPE /bitmym/i_product_catalog_adv-statusflag,
+        _characteristics   TYPE STANDARD TABLE OF /bitmym/i_classification WITH EMPTY KEY,
+        _child             TYPE STANDARD TABLE OF /bitmym/i_product_catalog_hry WITH EMPTY KEY,
       END OF ty_product_catalog,
       tty_product_catalog TYPE STANDARD TABLE OF ty_product_catalog WITH EMPTY KEY.
 
@@ -49,28 +62,22 @@ CLASS /BITMYM/CL_PRODUCT_CATALOG_QP DEFINITION
 
     METHODS get_orderby_clause
       IMPORTING
-        it_sort             TYPE if_rap_query_request=>tt_sort_elements
+        it_sort            TYPE if_rap_query_request=>tt_sort_elements
       RETURNING
-        VALUE(rv_orderby)   TYPE string.
-
-    METHODS apply_sorting
-      IMPORTING
-        it_sort TYPE if_rap_query_request=>tt_sort_elements
-      CHANGING
-        ct_data TYPE tty_product_catalog.
+        VALUE(rv_orderby)  TYPE string.
 
     METHODS get_where_clause
       IMPORTING
-        io_filter                TYPE REF TO if_rap_query_filter
-        iv_search_expression     TYPE string
+        io_filter            TYPE REF TO if_rap_query_filter
+        iv_search_expression TYPE string
       RETURNING
-        VALUE(rv_where)          TYPE string.
+        VALUE(rv_where)      TYPE string.
 
     METHODS get_select_list_from_request
       IMPORTING
-        io_request               TYPE REF TO if_rap_query_request
+        io_request            TYPE REF TO if_rap_query_request
       RETURNING
-        VALUE(rv_select_list)    TYPE string.
+        VALUE(rv_select_list) TYPE string.
 
     METHODS apply_characteristic_filters
       IMPORTING
@@ -80,15 +87,72 @@ CLASS /BITMYM/CL_PRODUCT_CATALOG_QP DEFINITION
 
     METHODS has_characteristic_filter
       IMPORTING
-        io_filter                TYPE REF TO if_rap_query_filter
+        io_filter                 TYPE REF TO if_rap_query_filter
       RETURNING
         VALUE(rv_has_char_filter) TYPE abap_bool.
 
     METHODS get_source_cds_for_entity
       IMPORTING
-        iv_entity_id       TYPE string
+        iv_entity_id        TYPE string
       RETURNING
         VALUE(rv_source_cds) TYPE string.
+
+    METHODS get_filter_ranges
+      IMPORTING
+        io_filter             TYPE REF TO if_rap_query_filter
+      RETURNING
+        VALUE(rt_name_ranges) TYPE if_rap_query_filter=>tt_name_range_pairs.
+
+    METHODS determine_requested_expands
+      IMPORTING
+        io_request      TYPE REF TO if_rap_query_request
+      EXPORTING
+        ev_expand_char  TYPE abap_bool
+        ev_expand_child TYPE abap_bool.
+
+    METHODS get_fetch_rows
+      IMPORTING
+        iv_has_paging      TYPE abap_bool
+        iv_offset          TYPE i
+        iv_page_size       TYPE i
+        iv_has_char_filter TYPE abap_bool
+      RETURNING
+        VALUE(rv_fetch_rows) TYPE i.
+
+    METHODS read_root_data
+      IMPORTING
+        iv_select_list TYPE string
+        iv_from_syntax TYPE string
+        iv_where       TYPE string
+        iv_orderby     TYPE string
+        iv_fetch_rows  TYPE i
+      CHANGING
+        ct_data        TYPE tty_product_catalog.
+
+    METHODS expand_characteristics
+      CHANGING
+        ct_data TYPE tty_product_catalog.
+
+    METHODS expand_child_nodes
+      CHANGING
+        ct_data TYPE tty_product_catalog.
+
+    METHODS get_total_count
+      IMPORTING
+        iv_from_syntax     TYPE string
+        iv_where           TYPE string
+        iv_has_char_filter TYPE abap_bool
+        iv_filtered_count  TYPE i
+      RETURNING
+        VALUE(rv_count)    TYPE int8.
+
+    METHODS apply_requested_paging
+      IMPORTING
+        iv_has_paging TYPE abap_bool
+        iv_offset     TYPE i
+        iv_page_size  TYPE i
+      CHANGING
+        ct_data       TYPE tty_product_catalog.
 
 ENDCLASS.
 
@@ -97,128 +161,77 @@ ENDCLASS.
 CLASS /BITMYM/CL_PRODUCT_CATALOG_QP IMPLEMENTATION.
 
   METHOD if_rap_query_provider~select.
-
     DATA:
-      lt_data            TYPE tty_product_catalog,
-      lv_root_node       TYPE /bitmym/i_product_catalog_hry-nodeid,
-      lv_max_depth       TYPE i,
-      lv_count           TYPE int8,
-      lv_data_requested  TYPE abap_bool,
-      lv_count_requested TYPE abap_bool,
-      lv_page_size       TYPE i,
-      lv_offset          TYPE i,
-      lv_fetch_rows      TYPE i,
-      lv_where           TYPE string,
-      lv_orderby         TYPE string.
+      lt_data             TYPE tty_product_catalog,
+      lv_root_node        TYPE /bitmym/i_product_catalog_hry-nodeid,
+      lv_max_depth        TYPE i,
+      lv_count            TYPE int8,
+      lv_data_requested   TYPE abap_bool,
+      lv_count_requested  TYPE abap_bool,
+      lv_page_size        TYPE i,
+      lv_offset           TYPE i,
+      lv_where            TYPE string,
+      lv_orderby          TYPE string,
+      lv_expand_char      TYPE abap_bool,
+      lv_expand_child     TYPE abap_bool,
+      lv_has_char_filter  TYPE abap_bool,
+      lv_has_paging       TYPE abap_bool,
+      lv_fetch_rows       TYPE i.
 
     lv_data_requested = io_request->is_data_requested( ).
-    DATA(lv_entity) = io_request->get_entity_id( ).
-
-    gv_source_cds = get_source_cds_for_entity( lv_entity ).
-
     lv_count_requested = io_request->is_total_numb_of_rec_requested( ).
-
     IF lv_data_requested = abap_false
        AND lv_count_requested = abap_false.
       RETURN.
     ENDIF.
 
-    DATA(lo_filter) = io_request->get_filter( ).
+    gv_source_cds = get_source_cds_for_entity( io_request->get_entity_id( ) ).
 
+    DATA(lo_filter) = io_request->get_filter( ).
     lv_root_node = get_root_node( lo_filter ).
     lv_max_depth = get_max_depth_from_filter( lo_filter ).
 
     DATA(lo_paging) = io_request->get_paging( ).
-    CLEAR: lv_offset, lv_page_size, lv_fetch_rows.
-
-    IF lo_paging IS BOUND.
+    lv_has_paging = xsdbool( lo_paging IS BOUND ).
+    IF lv_has_paging = abap_true.
       lv_offset = lo_paging->get_offset( ).
       lv_page_size = lo_paging->get_page_size( ).
     ENDIF.
 
-    DATA(lt_sort) = io_request->get_sort_elements( ).
-    DATA(lv_search_expression) = io_request->get_search_expression( ).
     lv_where = get_where_clause(
       io_filter            = lo_filter
-      iv_search_expression = lv_search_expression ).
-    lv_orderby = get_orderby_clause( lt_sort ).
+      iv_search_expression = io_request->get_search_expression( ) ).
+    lv_orderby = get_orderby_clause( io_request->get_sort_elements( ) ).
 
-    DATA(lv_has_char_filter) = has_characteristic_filter( lo_filter ).
+    lv_has_char_filter = has_characteristic_filter( lo_filter ).
+    determine_requested_expands(
+      EXPORTING
+        io_request      = io_request
+      IMPORTING
+        ev_expand_char  = lv_expand_char
+        ev_expand_child = lv_expand_child ).
 
-    DATA lv_expand_char TYPE abap_bool VALUE abap_false.
-    DATA lv_expand_child TYPE abap_bool VALUE abap_false.
-
-    DATA(lt_expand) = io_request->get_requested_elements( ).
-    LOOP AT lt_expand INTO DATA(ls_expand).
-      CASE ls_expand.
-        WHEN '_CHARACTERISTICS'.
-          lv_expand_char = abap_true.
-        WHEN '_CHILD'.
-          lv_expand_child = abap_true.
-      ENDCASE.
-    ENDLOOP.
-
-    IF lo_paging IS BOUND
-       AND lv_page_size <> if_rap_query_paging=>page_size_unlimited.
-      lv_fetch_rows = lv_offset + lv_page_size.
-    ENDIF.
-    " Characteristic filters are resolved on association data in ABAP,
-    " so we need the full root set before paging.
-    IF lv_has_char_filter = abap_true.
-      CLEAR lv_fetch_rows.
-    ENDIF.
+    lv_fetch_rows = get_fetch_rows(
+      iv_has_paging      = lv_has_paging
+      iv_offset          = lv_offset
+      iv_page_size       = lv_page_size
+      iv_has_char_filter = lv_has_char_filter ).
 
     DATA(lv_select_list) = get_select_list_from_request( io_request ).
-    DATA lv_from_syntax TYPE string.
+    DATA(lv_from_syntax) = |{ gv_source_cds }( p_root_node = @lv_root_node, p_max_depth = @lv_max_depth )|.
 
-    lv_from_syntax = |{ gv_source_cds }( p_root_node = @lv_root_node, p_max_depth = @lv_max_depth )|.
+    read_root_data(
+      EXPORTING
+        iv_select_list = lv_select_list
+        iv_from_syntax = lv_from_syntax
+        iv_where       = lv_where
+        iv_orderby     = lv_orderby
+        iv_fetch_rows  = lv_fetch_rows
+      CHANGING
+        ct_data        = lt_data ).
 
-    IF lv_where IS INITIAL.
-      IF lv_fetch_rows > 0.
-        SELECT (lv_select_list)
-          FROM (lv_from_syntax)
-          ORDER BY (lv_orderby)
-          INTO CORRESPONDING FIELDS OF TABLE @lt_data
-          UP TO @lv_fetch_rows ROWS.
-      ELSE.
-        SELECT (lv_select_list)
-          FROM (lv_from_syntax)
-          ORDER BY (lv_orderby)
-          INTO CORRESPONDING FIELDS OF TABLE @lt_data.
-      ENDIF.
-    ELSE.
-      IF lv_fetch_rows > 0.
-        SELECT DISTINCT (lv_select_list)
-          FROM (lv_from_syntax)
-          WHERE (lv_where)
-          ORDER BY (lv_orderby)
-          INTO CORRESPONDING FIELDS OF TABLE @lt_data
-          UP TO @lv_fetch_rows ROWS.
-      ELSE.
-        SELECT DISTINCT (lv_select_list)
-          FROM (lv_from_syntax)
-          WHERE (lv_where)
-          ORDER BY (lv_orderby)
-          INTO CORRESPONDING FIELDS OF TABLE @lt_data.
-      ENDIF.
-    ENDIF.
-
-    IF lv_expand_char = abap_true AND lt_data IS NOT INITIAL.
-      SELECT a~nodeid,
-             b~*
-        FROM @lt_data AS a
-        INNER JOIN /BITMYM/I_Classification AS b
-          ON b~ClfnObjectID = a~nodeid
-        INTO TABLE @DATA(lt_joined_char).
-
-      LOOP AT lt_data ASSIGNING FIELD-SYMBOL(<ls_data>).
-        <ls_data>-_characteristics =
-          VALUE #(
-            FOR ls_join IN lt_joined_char
-            WHERE ( nodeid = <ls_data>-nodeid )
-            ( CORRESPONDING #( ls_join ) )
-          ).
-      ENDLOOP.
+    IF lv_expand_char = abap_true.
+      expand_characteristics( CHANGING ct_data = lt_data ).
     ENDIF.
 
     IF lv_has_char_filter = abap_true.
@@ -229,96 +242,217 @@ CLASS /BITMYM/CL_PRODUCT_CATALOG_QP IMPLEMENTATION.
           ct_data   = lt_data ).
     ENDIF.
 
-    IF lv_expand_child = abap_true AND lt_data IS NOT INITIAL.
-      SELECT
-        _child~NodeID,
-        _child~ParentNodeID,
-        _child~ClassType,
-        _child~NodeText,
-        _child~NodeClass,
-        _child~ParentText,
-        _child~NodeObjectType
-        FROM @lt_data AS _parent
-        INNER JOIN /BITMYM/I_PRODUCT_CLASS AS _child
-          ON _child~parentnodeid = _parent~nodeid
-        INTO TABLE @DATA(lt_child_joined).
-
-      LOOP AT lt_data ASSIGNING <ls_data>.
-        <ls_data>-_child =
-          VALUE #(
-            FOR ls_child IN lt_child_joined
-            WHERE ( parentnodeid = <ls_data>-nodeid )
-            ( nodeid         = ls_child-nodeid
-              parentnodeid   = ls_child-parentnodeid
-              nodetext       = ls_child-nodetext
-              nodeclass      = ls_child-nodeclass
-              nodeobjecttype = ls_child-nodeobjecttype
-              parenttext     = ls_child-parenttext )
-          ).
-      ENDLOOP.
+    IF lv_expand_child = abap_true.
+      expand_child_nodes( CHANGING ct_data = lt_data ).
     ENDIF.
 
     IF lv_count_requested = abap_true.
-      IF lv_has_char_filter = abap_true.
-        lv_count = lines( lt_data ).
-      ELSE.
-        IF lv_where IS INITIAL.
-          SELECT COUNT( * )
-            FROM (lv_from_syntax)
-            INTO @lv_count.
-        ELSE.
-          SELECT COUNT( * )
-            FROM (lv_from_syntax)
-            WHERE (lv_where)
-            INTO @lv_count.
-        ENDIF.
-      ENDIF.
-
+      lv_count = get_total_count(
+        iv_from_syntax     = lv_from_syntax
+        iv_where           = lv_where
+        iv_has_char_filter = lv_has_char_filter
+        iv_filtered_count  = lines( lt_data ) ).
       io_response->set_total_number_of_records( lv_count ).
     ENDIF.
 
     IF lv_data_requested = abap_true.
-      IF lo_paging IS BOUND.
-        IF lv_page_size = if_rap_query_paging=>page_size_unlimited.
-          IF lv_offset > 0.
-            apply_paging(
-              EXPORTING
-                iv_offset = lv_offset
-                iv_top    = 0
-              CHANGING
-                ct_data   = lt_data ).
-          ENDIF.
-        ELSE.
-          apply_paging(
-            EXPORTING
-              iv_offset = lv_offset
-              iv_top    = lv_page_size
-            CHANGING
-              ct_data   = lt_data ).
-        ENDIF.
-      ENDIF.
-
+      apply_requested_paging(
+        EXPORTING
+          iv_has_paging = lv_has_paging
+          iv_offset     = lv_offset
+          iv_page_size  = lv_page_size
+        CHANGING
+          ct_data       = lt_data ).
       io_response->set_data( lt_data ).
     ENDIF.
+  ENDMETHOD.
 
+
+  METHOD get_filter_ranges.
+    CLEAR rt_name_ranges.
+    IF io_filter IS NOT BOUND.
+      RETURN.
+    ENDIF.
+
+    TRY.
+        rt_name_ranges = io_filter->get_as_ranges( ).
+      CATCH cx_root.
+        CLEAR rt_name_ranges.
+    ENDTRY.
+  ENDMETHOD.
+
+
+  METHOD determine_requested_expands.
+    ev_expand_char = abap_false.
+    ev_expand_child = abap_false.
+
+    DATA(lt_expand) = io_request->get_requested_elements( ).
+    LOOP AT lt_expand INTO DATA(lv_expand).
+      CASE lv_expand.
+        WHEN gc_assoc_characteristics.
+          ev_expand_char = abap_true.
+        WHEN gc_assoc_child.
+          ev_expand_child = abap_true.
+      ENDCASE.
+    ENDLOOP.
+  ENDMETHOD.
+
+
+  METHOD get_fetch_rows.
+    rv_fetch_rows = 0.
+    IF iv_has_paging = abap_true
+       AND iv_page_size <> if_rap_query_paging=>page_size_unlimited.
+      rv_fetch_rows = iv_offset + iv_page_size.
+    ENDIF.
+
+    IF iv_has_char_filter = abap_true.
+      CLEAR rv_fetch_rows.
+    ENDIF.
+  ENDMETHOD.
+
+
+  METHOD read_root_data.
+    CLEAR ct_data.
+
+    IF iv_where IS INITIAL.
+      IF iv_fetch_rows > 0.
+        SELECT (iv_select_list)
+          FROM (iv_from_syntax)
+          ORDER BY (iv_orderby)
+          INTO CORRESPONDING FIELDS OF TABLE @ct_data
+          UP TO @iv_fetch_rows ROWS.
+      ELSE.
+        SELECT (iv_select_list)
+          FROM (iv_from_syntax)
+          ORDER BY (iv_orderby)
+          INTO CORRESPONDING FIELDS OF TABLE @ct_data.
+      ENDIF.
+    ELSE.
+      IF iv_fetch_rows > 0.
+        SELECT DISTINCT (iv_select_list)
+          FROM (iv_from_syntax)
+          WHERE (iv_where)
+          ORDER BY (iv_orderby)
+          INTO CORRESPONDING FIELDS OF TABLE @ct_data
+          UP TO @iv_fetch_rows ROWS.
+      ELSE.
+        SELECT DISTINCT (iv_select_list)
+          FROM (iv_from_syntax)
+          WHERE (iv_where)
+          ORDER BY (iv_orderby)
+          INTO CORRESPONDING FIELDS OF TABLE @ct_data.
+      ENDIF.
+    ENDIF.
+  ENDMETHOD.
+
+
+  METHOD expand_characteristics.
+    IF ct_data IS INITIAL.
+      RETURN.
+    ENDIF.
+
+    SELECT a~nodeid,
+           b~*
+      FROM @ct_data AS a
+      INNER JOIN /BITMYM/I_Classification AS b
+        ON b~ClfnObjectID = a~nodeid
+      INTO TABLE @DATA(lt_joined_char).
+
+    LOOP AT ct_data ASSIGNING FIELD-SYMBOL(<ls_data>).
+      <ls_data>-_characteristics =
+        VALUE #(
+          FOR ls_join IN lt_joined_char
+          WHERE ( nodeid = <ls_data>-nodeid )
+          ( CORRESPONDING #( ls_join ) )
+        ).
+    ENDLOOP.
+  ENDMETHOD.
+
+
+  METHOD expand_child_nodes.
+    IF ct_data IS INITIAL.
+      RETURN.
+    ENDIF.
+
+    SELECT
+      _child~NodeID,
+      _child~ParentNodeID,
+      _child~ClassType,
+      _child~NodeText,
+      _child~NodeClass,
+      _child~ParentText,
+      _child~NodeObjectType
+      FROM @ct_data AS _parent
+      INNER JOIN /BITMYM/I_PRODUCT_CLASS AS _child
+        ON _child~parentnodeid = _parent~nodeid
+      INTO TABLE @DATA(lt_child_joined).
+
+    LOOP AT ct_data ASSIGNING FIELD-SYMBOL(<ls_data>).
+      <ls_data>-_child =
+        VALUE #(
+          FOR ls_child IN lt_child_joined
+          WHERE ( parentnodeid = <ls_data>-nodeid )
+          ( nodeid         = ls_child-nodeid
+            parentnodeid   = ls_child-parentnodeid
+            nodetext       = ls_child-nodetext
+            nodeclass      = ls_child-nodeclass
+            nodeobjecttype = ls_child-nodeobjecttype
+            parenttext     = ls_child-parenttext )
+        ).
+    ENDLOOP.
+  ENDMETHOD.
+
+
+  METHOD get_total_count.
+    IF iv_has_char_filter = abap_true.
+      rv_count = iv_filtered_count.
+      RETURN.
+    ENDIF.
+
+    IF iv_where IS INITIAL.
+      SELECT COUNT( * )
+        FROM (iv_from_syntax)
+        INTO @rv_count.
+    ELSE.
+      SELECT COUNT( * )
+        FROM (iv_from_syntax)
+        WHERE (iv_where)
+        INTO @rv_count.
+    ENDIF.
+  ENDMETHOD.
+
+
+  METHOD apply_requested_paging.
+    IF iv_has_paging = abap_false.
+      RETURN.
+    ENDIF.
+
+    IF iv_page_size = if_rap_query_paging=>page_size_unlimited.
+      IF iv_offset > 0.
+        apply_paging(
+          EXPORTING
+            iv_offset = iv_offset
+            iv_top    = 0
+          CHANGING
+            ct_data   = ct_data ).
+      ENDIF.
+    ELSE.
+      apply_paging(
+        EXPORTING
+          iv_offset = iv_offset
+          iv_top    = iv_page_size
+        CHANGING
+          ct_data   = ct_data ).
+    ENDIF.
   ENDMETHOD.
 
 
   METHOD has_characteristic_filter.
     rv_has_char_filter = abap_false.
 
-    IF io_filter IS NOT BOUND.
-      RETURN.
-    ENDIF.
-
-    TRY.
-        DATA(lt_name_ranges) = io_filter->get_as_ranges( ).
-      CATCH cx_root.
-        RETURN.
-    ENDTRY.
-
+    DATA(lt_name_ranges) = get_filter_ranges( io_filter ).
     LOOP AT lt_name_ranges INTO DATA(ls_name_range).
-      IF to_upper( ls_name_range-name ) CP '_CHARACTERISTICS*'.
+      IF to_upper( ls_name_range-name ) CP |{ gc_assoc_characteristics }*|.
         rv_has_char_filter = abap_true.
         RETURN.
       ENDIF.
@@ -328,123 +462,91 @@ CLASS /BITMYM/CL_PRODUCT_CATALOG_QP IMPLEMENTATION.
 
   METHOD get_source_cds_for_entity.
     CASE iv_entity_id.
-      WHEN '/BITMYM/C_PRODUCT_CATALOG'.
-        rv_source_cds = '/BITMYM/I_PRODUCT_CATALOG_HRY'.
-      WHEN '/BITMYM/C_CHARCBASICLIST'.
-        rv_source_cds = '/BITMYM/I_CLASS_CHARAC'.
+      WHEN gc_entity_product_catalog.
+        rv_source_cds = gc_source_product_hry.
+      WHEN gc_entity_charc_basiclist.
+        rv_source_cds = gc_source_class_charac.
       WHEN OTHERS.
-        rv_source_cds = '/BITMYM/I_PRODUCT_CATALOG_HRY'.
+        rv_source_cds = gc_source_product_hry.
     ENDCASE.
   ENDMETHOD.
 
 
   METHOD get_root_node.
-    DATA: ld_class_type  TYPE klah-klart,
-          ld_class_num   TYPE klah-class,
-          ls_area        TYPE /sopromet/zzl01,
-          lt_name_ranges TYPE if_rap_query_filter=>tt_name_range_pairs.
+    DATA: ld_class_type TYPE klah-klart,
+          ld_class_num  TYPE klah-class,
+          ls_area       TYPE /sopromet/zzl01.
 
     CLEAR rv_root_node.
 
-    IF gv_source_cds = '/BITMYM/I_PRODUCT_CATALOG_HRY'.
-      IF io_filter IS BOUND.
-        TRY.
-            lt_name_ranges = io_filter->get_as_ranges( ).
-          CATCH cx_root.
-            CLEAR lt_name_ranges.
-        ENDTRY.
-
-        READ TABLE lt_name_ranges INTO DATA(ls_name_range)
-          WITH KEY name = 'PARENTNODEID'.
-        IF sy-subrc = 0 AND ls_name_range-range IS NOT INITIAL.
-          READ TABLE ls_name_range-range INTO DATA(ls_range) INDEX 1.
-          IF sy-subrc = 0.
-            rv_root_node = CONV /bitmym/i_product_catalog_hry-parentnodeid( ls_range-low ).
-            RETURN.
-          ENDIF.
-        ENDIF.
+    DATA(lt_name_ranges) = get_filter_ranges( io_filter ).
+    READ TABLE lt_name_ranges INTO DATA(ls_name_range)
+      WITH KEY name = gc_filter_parentnodeid.
+    IF sy-subrc = 0 AND ls_name_range-range IS NOT INITIAL.
+      READ TABLE ls_name_range-range INTO DATA(ls_range) INDEX 1.
+      IF sy-subrc = 0 AND ls_range-low IS NOT INITIAL.
+        rv_root_node = CONV /bitmym/i_product_catalog_hry-parentnodeid( ls_range-low ).
+        RETURN.
       ENDIF.
-    ELSE.
-      IF io_filter IS BOUND.
-        TRY.
-            lt_name_ranges = io_filter->get_as_ranges( ).
-          CATCH cx_root.
-            CLEAR lt_name_ranges.
-        ENDTRY.
+    ENDIF.
 
-        READ TABLE lt_name_ranges INTO ls_name_range
-          WITH KEY name = 'PARENTNODEID'.
-        IF sy-subrc = 0 AND ls_name_range-range IS NOT INITIAL.
-          READ TABLE ls_name_range-range INTO ls_range INDEX 1.
-          IF sy-subrc = 0 AND ls_range-low IS NOT INITIAL.
-            rv_root_node = CONV /bitmym/i_product_catalog_hry-parentnodeid( ls_range-low ).
-            RETURN.
-          ENDIF.
-        ENDIF.
-      ENDIF.
+    IF gv_source_cds = gc_source_product_hry.
+      RETURN.
+    ENDIF.
 
-      DATA(go_ui5) = NEW /bitmym/cl_ui5(
-        id_rap_framework = abap_true ).
+    DATA(go_ui5) = NEW /bitmym/cl_ui5(
+      id_rap_framework = abap_true ).
+    CHECK go_ui5 IS BOUND.
 
-      CHECK go_ui5 IS BOUND.
+    go_ui5->fill_comwa_from_header( ).
+    go_ui5->start_sales_area( ).
+    DATA(ls_data) = go_ui5->get_data( ).
 
-      go_ui5->fill_comwa_from_header( ).
-      go_ui5->start_sales_area( ).
-      DATA(ls_data) = go_ui5->get_data( ).
+    ls_data-go_sales_area->get_property(
+      EXPORTING
+        i_feld  = 'GS_ACTUAL_AREA'
+      IMPORTING
+        e_value = ls_area ).
 
-      ls_data-go_sales_area->get_property(
-        EXPORTING
-          i_feld  = 'GS_ACTUAL_AREA'
-        IMPORTING
-          e_value = ls_area ).
+    CHECK ls_area-klart_search IS NOT INITIAL
+      AND ls_area-class_search IS NOT INITIAL.
 
-      CHECK ls_area-klart_search IS NOT INITIAL
-        AND ls_area-class_search IS NOT INITIAL.
+    ld_class_type = ls_area-klart_search.
+    ld_class_num = ls_area-class_search.
 
-      ld_class_type = ls_area-klart_search.
-      ld_class_num = ls_area-class_search.
+    SELECT SINGLE ClassInternalID
+      FROM I_ClassHeader
+      WHERE Class     = @ld_class_num
+        AND ClassType = @ld_class_type
+      INTO @DATA(lv_nodeid).
 
-      SELECT SINGLE ClassInternalID
-        FROM I_ClassHeader
-        WHERE Class     = @ld_class_num
-          AND ClassType = @ld_class_type
-        INTO @DATA(lv_nodeid).
-
-      IF sy-subrc = 0 AND lv_nodeid IS NOT INITIAL.
-        rv_root_node = lv_nodeid.
-      ENDIF.
+    IF sy-subrc = 0 AND lv_nodeid IS NOT INITIAL.
+      rv_root_node = lv_nodeid.
     ENDIF.
   ENDMETHOD.
 
 
   METHOD get_max_depth_from_filter.
-    DATA lt_name_ranges TYPE if_rap_query_filter=>tt_name_range_pairs.
-
     rv_max_depth = 99.
 
-    IF io_filter IS NOT BOUND.
+    DATA(lt_name_ranges) = get_filter_ranges( io_filter ).
+    IF lt_name_ranges IS INITIAL.
       RETURN.
     ENDIF.
 
-    TRY.
-        lt_name_ranges = io_filter->get_as_ranges( ).
-      CATCH cx_root.
-        RETURN.
-    ENDTRY.
-
     READ TABLE lt_name_ranges INTO DATA(ls_name_range)
-      WITH KEY name = 'MAXDEPTH'.
+      WITH KEY name = gc_filter_maxdepth_upper.
     IF sy-subrc <> 0.
       READ TABLE lt_name_ranges INTO ls_name_range
-        WITH KEY name = 'MaxDepth'.
+        WITH KEY name = gc_filter_maxdepth_mixed.
     ENDIF.
     IF sy-subrc <> 0.
       READ TABLE lt_name_ranges INTO ls_name_range
-        WITH KEY name = 'P_MAX_DEPTH'.
+        WITH KEY name = gc_filter_p_max_depth.
     ENDIF.
     IF sy-subrc <> 0.
       READ TABLE lt_name_ranges INTO ls_name_range
-        WITH KEY name = 'maxdepth'.
+        WITH KEY name = gc_filter_maxdepth_lower.
     ENDIF.
 
     IF sy-subrc = 0 AND ls_name_range-range IS NOT INITIAL.
@@ -468,14 +570,12 @@ CLASS /BITMYM/CL_PRODUCT_CATALOG_QP IMPLEMENTATION.
       lv_lines TYPE i.
 
     lv_lines = lines( ct_data ).
-
     IF lv_lines = 0.
       CLEAR ct_data.
       RETURN.
     ENDIF.
 
     lv_from = iv_offset + 1.
-
     IF lv_from > lv_lines.
       CLEAR ct_data.
       RETURN.
@@ -498,77 +598,19 @@ CLASS /BITMYM/CL_PRODUCT_CATALOG_QP IMPLEMENTATION.
   ENDMETHOD.
 
 
-  METHOD apply_sorting.
-    LOOP AT it_sort INTO DATA(ls_sort).
-      CASE ls_sort-element_name.
-        WHEN 'NODEID'.
-          IF ls_sort-descending = abap_true.
-            SORT ct_data BY nodeid DESCENDING.
-          ELSE.
-            SORT ct_data BY nodeid ASCENDING.
-          ENDIF.
-
-        WHEN 'PARENTNODEID'.
-          IF ls_sort-descending = abap_true.
-            SORT ct_data BY parentnodeid DESCENDING.
-          ELSE.
-            SORT ct_data BY parentnodeid ASCENDING.
-          ENDIF.
-
-        WHEN 'NODETEXT'.
-          IF ls_sort-descending = abap_true.
-            SORT ct_data BY nodetext DESCENDING.
-          ELSE.
-            SORT ct_data BY nodetext ASCENDING.
-          ENDIF.
-
-        WHEN 'NODECLASS'.
-          IF ls_sort-descending = abap_true.
-            SORT ct_data BY nodeclass DESCENDING.
-          ELSE.
-            SORT ct_data BY nodeclass ASCENDING.
-          ENDIF.
-
-        WHEN 'NODEOBJECTTYPE'.
-          IF ls_sort-descending = abap_true.
-            SORT ct_data BY nodeobjecttype DESCENDING.
-          ELSE.
-            SORT ct_data BY nodeobjecttype ASCENDING.
-          ENDIF.
-
-        WHEN 'PARENTTEXT'.
-          IF ls_sort-descending = abap_true.
-            SORT ct_data BY parenttext DESCENDING.
-          ELSE.
-            SORT ct_data BY parenttext ASCENDING.
-          ENDIF.
-      ENDCASE.
-    ENDLOOP.
-  ENDMETHOD.
-
-
   METHOD get_where_clause.
-    DATA: lt_name_ranges TYPE if_rap_query_filter=>tt_name_range_pairs.
-
     CLEAR rv_where.
 
-    IF io_filter IS NOT BOUND.
-      RETURN.
-    ENDIF.
-
-    TRY.
-        lt_name_ranges = io_filter->get_as_ranges( ).
-      CATCH cx_root.
-        RETURN.
-    ENDTRY.
-
+    DATA(lt_name_ranges) = get_filter_ranges( io_filter ).
     LOOP AT lt_name_ranges INTO DATA(ls_name_range).
       DATA(lv_name) = to_upper( ls_name_range-name ).
 
-      IF lv_name = 'PARENTNODEID'
-         OR lv_name = 'MAXDEPTH'
-         OR lv_name = 'P_MAX_DEPTH'
-         OR lv_name CP '_CHARACTERISTICS*'.
+      IF lv_name = gc_filter_parentnodeid
+         OR lv_name = gc_filter_maxdepth_upper
+         OR lv_name = to_upper( gc_filter_maxdepth_mixed )
+         OR lv_name = gc_filter_p_max_depth
+         OR lv_name = to_upper( gc_filter_maxdepth_lower )
+         OR lv_name CP |{ gc_assoc_characteristics }*|.
         CONTINUE.
       ENDIF.
 
@@ -577,7 +619,6 @@ CLASS /BITMYM/CL_PRODUCT_CATALOG_QP IMPLEMENTATION.
 
       LOOP AT ls_name_range-range INTO DATA(ls_range).
         DATA(lv_cond) = ``.
-
         CASE ls_range-option.
           WHEN 'EQ'.
             lv_cond = |{ ls_name_range-name } = '{ ls_range-low }'|.
@@ -624,14 +665,12 @@ CLASS /BITMYM/CL_PRODUCT_CATALOG_QP IMPLEMENTATION.
 
     IF iv_search_expression IS NOT INITIAL.
       DATA(lv_search) = iv_search_expression.
-
       REPLACE ALL OCCURRENCES OF '"' IN lv_search WITH ''.
       REPLACE ALL OCCURRENCES OF '''' IN lv_search WITH ''''''.
       REPLACE ALL OCCURRENCES OF '*' IN lv_search WITH '%'.
       TRANSLATE lv_search TO UPPER CASE.
 
       DATA(lv_search_clause) = |( UPPER( NODETEXT ) LIKE '%{ lv_search }%' )|.
-
       IF rv_where IS INITIAL.
         rv_where = lv_search_clause.
       ELSE.
@@ -642,17 +681,11 @@ CLASS /BITMYM/CL_PRODUCT_CATALOG_QP IMPLEMENTATION.
 
 
   METHOD apply_characteristic_filters.
-    DATA lt_name_ranges TYPE if_rap_query_filter=>tt_name_range_pairs.
-
     IF io_filter IS NOT BOUND OR ct_data IS INITIAL.
       RETURN.
     ENDIF.
 
-    TRY.
-        lt_name_ranges = io_filter->get_as_ranges( ).
-      CATCH cx_root.
-        RETURN.
-    ENDTRY.
+    DATA(lt_name_ranges) = get_filter_ranges( io_filter ).
 
     DATA lr_classification TYPE REF TO data.
     CREATE DATA lr_classification TYPE /bitmym/i_classification.
@@ -663,7 +696,8 @@ CLASS /BITMYM/CL_PRODUCT_CATALOG_QP IMPLEMENTATION.
 
     LOOP AT lt_name_ranges INTO DATA(ls_name_range).
       DATA(lv_name_upper) = to_upper( ls_name_range-name ).
-      IF lv_name_upper NP '_CHARACTERISTICS*' OR ls_name_range-range IS INITIAL.
+      IF lv_name_upper NP |{ gc_assoc_characteristics }*|
+         OR ls_name_range-range IS INITIAL.
         CONTINUE.
       ENDIF.
 
@@ -758,9 +792,10 @@ CLASS /BITMYM/CL_PRODUCT_CATALOG_QP IMPLEMENTATION.
       DATA lt_matching_range TYPE RANGE OF /bitmym/i_product_catalog_hry-nodeid.
       LOOP AT lt_matching_nodes INTO DATA(lv_match_nodeid).
         APPEND VALUE #(
-          sign = 'I'
+          sign   = 'I'
           option = 'EQ'
-          low = CONV /bitmym/i_product_catalog_hry-nodeid( lv_match_nodeid ) ) TO lt_matching_range.
+          low    = CONV /bitmym/i_product_catalog_hry-nodeid( lv_match_nodeid ) )
+          TO lt_matching_range.
       ENDLOOP.
 
       DELETE ct_data WHERE nodeid NOT IN lt_matching_range.
@@ -776,7 +811,6 @@ CLASS /BITMYM/CL_PRODUCT_CATALOG_QP IMPLEMENTATION.
 
     LOOP AT it_sort INTO DATA(ls_sort).
       DATA(lv_part) = ``.
-
       CASE to_upper( ls_sort-element_name ).
         WHEN 'NODEID'.
           lv_part = 'NODEID'.
@@ -820,9 +854,9 @@ CLASS /BITMYM/CL_PRODUCT_CATALOG_QP IMPLEMENTATION.
 
     DATA: lo_struct TYPE REF TO cl_abap_structdescr,
           lt_comp   TYPE cl_abap_structdescr=>component_table.
-    DATA: lr_data   TYPE REF TO data.
+    DATA lr_data TYPE REF TO data.
 
-    FIELD-SYMBOLS: <ls_comp> LIKE LINE OF lt_comp.
+    FIELD-SYMBOLS <ls_comp> LIKE LINE OF lt_comp.
 
     TRY.
         lt_requested = io_request->get_requested_elements( ).
@@ -831,13 +865,11 @@ CLASS /BITMYM/CL_PRODUCT_CATALOG_QP IMPLEMENTATION.
     ENDTRY.
 
     CREATE DATA lr_data TYPE (gv_source_cds).
-
     lo_struct ?= cl_abap_typedescr=>describe_by_data_ref( lr_data ).
     lt_comp = lo_struct->get_components( ).
 
     LOOP AT lt_requested INTO DATA(lv_element).
       DATA(lv_name) = to_upper( lv_element ).
-
       IF lv_name CP '_*'.
         CONTINUE.
       ENDIF.
@@ -855,7 +887,6 @@ CLASS /BITMYM/CL_PRODUCT_CATALOG_QP IMPLEMENTATION.
     IF NOT line_exists( lt_fields[ table_line = 'NODEID' ] ).
       APPEND 'NODEID' TO lt_fields.
     ENDIF.
-
     IF NOT line_exists( lt_fields[ table_line = 'PARENTNODEID' ] ).
       APPEND 'PARENTNODEID' TO lt_fields.
     ENDIF.
