@@ -428,13 +428,34 @@ CLASS /BITMYM/CL_PRODUCT_CATALOG_QP IMPLEMENTATION.
         ON b~ClfnObjectID = a~nodeid
       INTO TABLE @DATA(lt_joined_char).
 
+    TYPES:
+      BEGIN OF ty_char_bucket,
+        nodeid TYPE /bitmym/i_product_catalog_hry-nodeid,
+        items  TYPE STANDARD TABLE OF /bitmym/i_classification WITH EMPTY KEY,
+      END OF ty_char_bucket,
+      tty_char_bucket TYPE HASHED TABLE OF ty_char_bucket WITH UNIQUE KEY nodeid.
+
+    DATA lt_char_bucket TYPE tty_char_bucket.
+    LOOP AT lt_joined_char INTO DATA(ls_joined_char).
+      ASSIGN lt_char_bucket[ nodeid = ls_joined_char-nodeid ] TO FIELD-SYMBOL(<ls_char_bucket>).
+      IF sy-subrc <> 0.
+        INSERT VALUE #(
+          nodeid = ls_joined_char-nodeid
+          items  = VALUE #( ( CORRESPONDING #( ls_joined_char ) ) ) )
+          INTO TABLE lt_char_bucket
+          ASSIGNING <ls_char_bucket>.
+      ELSE.
+        APPEND CORRESPONDING #( ls_joined_char ) TO <ls_char_bucket>-items.
+      ENDIF.
+    ENDLOOP.
+
     LOOP AT ct_data ASSIGNING FIELD-SYMBOL(<ls_data>).
-      <ls_data>-_characteristics =
-        VALUE #(
-          FOR ls_join IN lt_joined_char
-          WHERE ( nodeid = <ls_data>-nodeid )
-          ( CORRESPONDING #( ls_join ) )
-        ).
+      ASSIGN lt_char_bucket[ nodeid = <ls_data>-nodeid ] TO <ls_char_bucket>.
+      IF sy-subrc = 0.
+        <ls_data>-_characteristics = <ls_char_bucket>-items.
+      ELSE.
+        CLEAR <ls_data>-_characteristics.
+      ENDIF.
     ENDLOOP.
   ENDMETHOD.
 
@@ -457,18 +478,56 @@ CLASS /BITMYM/CL_PRODUCT_CATALOG_QP IMPLEMENTATION.
         ON _child~parentnodeid = _parent~nodeid
       INTO TABLE @DATA(lt_child_joined).
 
+    TYPES:
+      BEGIN OF ty_child_item,
+        nodeid         TYPE /bitmym/i_product_catalog_hry-nodeid,
+        parentnodeid   TYPE /bitmym/i_product_catalog_hry-parentnodeid,
+        nodetext       TYPE /bitmym/i_product_catalog_hry-nodetext,
+        nodeclass      TYPE /bitmym/i_product_catalog_hry-nodeclass,
+        nodeobjecttype TYPE /bitmym/i_product_catalog_hry-nodeobjecttype,
+        parenttext     TYPE /bitmym/i_product_catalog_hry-parenttext,
+      END OF ty_child_item,
+      tty_child_item TYPE STANDARD TABLE OF ty_child_item WITH EMPTY KEY,
+      BEGIN OF ty_child_bucket,
+        parentnodeid TYPE /bitmym/i_product_catalog_hry-parentnodeid,
+        items        TYPE tty_child_item,
+      END OF ty_child_bucket,
+      tty_child_bucket TYPE HASHED TABLE OF ty_child_bucket WITH UNIQUE KEY parentnodeid.
+
+    DATA lt_child_bucket TYPE tty_child_bucket.
+    LOOP AT lt_child_joined INTO DATA(ls_child_joined).
+      ASSIGN lt_child_bucket[ parentnodeid = ls_child_joined-parentnodeid ] TO FIELD-SYMBOL(<ls_child_bucket>).
+      IF sy-subrc <> 0.
+        INSERT VALUE #(
+          parentnodeid = ls_child_joined-parentnodeid
+          items        = VALUE #(
+                           ( nodeid         = ls_child_joined-nodeid
+                             parentnodeid   = ls_child_joined-parentnodeid
+                             nodetext       = ls_child_joined-nodetext
+                             nodeclass      = ls_child_joined-nodeclass
+                             nodeobjecttype = ls_child_joined-nodeobjecttype
+                             parenttext     = ls_child_joined-parenttext ) ) )
+          INTO TABLE lt_child_bucket
+          ASSIGNING <ls_child_bucket>.
+      ELSE.
+        APPEND VALUE #(
+          nodeid         = ls_child_joined-nodeid
+          parentnodeid   = ls_child_joined-parentnodeid
+          nodetext       = ls_child_joined-nodetext
+          nodeclass      = ls_child_joined-nodeclass
+          nodeobjecttype = ls_child_joined-nodeobjecttype
+          parenttext     = ls_child_joined-parenttext )
+          TO <ls_child_bucket>-items.
+      ENDIF.
+    ENDLOOP.
+
     LOOP AT ct_data ASSIGNING FIELD-SYMBOL(<ls_data>).
-      <ls_data>-_child =
-        VALUE #(
-          FOR ls_child IN lt_child_joined
-          WHERE ( parentnodeid = <ls_data>-nodeid )
-          ( nodeid         = ls_child-nodeid
-            parentnodeid   = ls_child-parentnodeid
-            nodetext       = ls_child-nodetext
-            nodeclass      = ls_child-nodeclass
-            nodeobjecttype = ls_child-nodeobjecttype
-            parenttext     = ls_child-parenttext )
-        ).
+      ASSIGN lt_child_bucket[ parentnodeid = <ls_data>-nodeid ] TO <ls_child_bucket>.
+      IF sy-subrc = 0.
+        <ls_data>-_child = CORRESPONDING #( <ls_child_bucket>-items ).
+      ELSE.
+        CLEAR <ls_data>-_child.
+      ENDIF.
     ENDLOOP.
   ENDMETHOD.
 
