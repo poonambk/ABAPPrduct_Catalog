@@ -84,6 +84,12 @@ CLASS /BITMYM/CL_PRODUCT_CATALOG_QP DEFINITION
       RETURNING
         VALUE(rv_has_char_filter) TYPE abap_bool.
 
+    METHODS get_source_cds_for_entity
+      IMPORTING
+        iv_entity_id       TYPE string
+      RETURNING
+        VALUE(rv_source_cds) TYPE string.
+
 ENDCLASS.
 
 
@@ -108,13 +114,7 @@ CLASS /BITMYM/CL_PRODUCT_CATALOG_QP IMPLEMENTATION.
     lv_data_requested = io_request->is_data_requested( ).
     DATA(lv_entity) = io_request->get_entity_id( ).
 
-    IF lv_entity = '/BITMYM/C_PRODUCT_CATALOG'.
-      gv_source_cds = '/BITMYM/I_PRODUCT_CATALOG_HRY'.
-    ELSEIF lv_entity = '/BITMYM/C_CHARCBASICLIST'.
-      gv_source_cds = '/BITMYM/I_CLASS_CHARAC'.
-    ELSE.
-      gv_source_cds = '/BITMYM/I_PRODUCT_CATALOG_HRY'.
-    ENDIF.
+    gv_source_cds = get_source_cds_for_entity( lv_entity ).
 
     lv_count_requested = io_request->is_total_numb_of_rec_requested( ).
 
@@ -323,6 +323,18 @@ CLASS /BITMYM/CL_PRODUCT_CATALOG_QP IMPLEMENTATION.
         RETURN.
       ENDIF.
     ENDLOOP.
+  ENDMETHOD.
+
+
+  METHOD get_source_cds_for_entity.
+    CASE iv_entity_id.
+      WHEN '/BITMYM/C_PRODUCT_CATALOG'.
+        rv_source_cds = '/BITMYM/I_PRODUCT_CATALOG_HRY'.
+      WHEN '/BITMYM/C_CHARCBASICLIST'.
+        rv_source_cds = '/BITMYM/I_CLASS_CHARAC'.
+      WHEN OTHERS.
+        rv_source_cds = '/BITMYM/I_PRODUCT_CATALOG_HRY'.
+    ENDCASE.
   ENDMETHOD.
 
 
