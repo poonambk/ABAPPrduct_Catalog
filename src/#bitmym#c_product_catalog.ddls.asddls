@@ -18,9 +18,6 @@ define view entity /BITMYM/C_PRODUCT_CATALOG
       H.NodeClass,
       H.NodeObjectType,
       H.ParentText,
-      CharValue,
-      CharDescription,
-      CharId,
       _Characteristics,
       _Child
 }
