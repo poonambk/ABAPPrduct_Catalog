@@ -72,6 +72,12 @@ CLASS /BITMYM/CL_PRODUCT_CATALOG_QP DEFINITION
       RETURNING
         VALUE(rv_select_list)    TYPE string.
 
+    METHODS apply_characteristic_filters
+      IMPORTING
+        io_filter TYPE REF TO if_rap_query_filter
+      CHANGING
+        ct_data   TYPE tty_product_catalog.
+
 ENDCLASS.
 
 
@@ -131,6 +137,22 @@ CLASS /BITMYM/CL_PRODUCT_CATALOG_QP IMPLEMENTATION.
       iv_search_expression = lv_search_expression ).
     lv_orderby = get_orderby_clause( lt_sort ).
 
+    DATA lv_has_char_filter TYPE abap_bool VALUE abap_false.
+    IF lo_filter IS BOUND.
+      TRY.
+          DATA(lt_name_ranges) = lo_filter->get_as_ranges( ).
+        CATCH cx_root.
+          CLEAR lt_name_ranges.
+      ENDTRY.
+
+      LOOP AT lt_name_ranges INTO DATA(ls_name_range).
+        IF to_upper( ls_name_range-name ) CP '_CHARACTERISTICS*'.
+          lv_has_char_filter = abap_true.
+          EXIT.
+        ENDIF.
+      ENDLOOP.
+    ENDIF.
+
     DATA lv_expand_char TYPE abap_bool VALUE abap_false.
     DATA lv_expand_child TYPE abap_bool VALUE abap_false.
 
@@ -147,6 +169,11 @@ CLASS /BITMYM/CL_PRODUCT_CATALOG_QP IMPLEMENTATION.
     IF lo_paging IS BOUND
        AND lv_page_size <> if_rap_query_paging=>page_size_unlimited.
       lv_fetch_rows = lv_offset + lv_page_size.
+    ENDIF.
+    " Characteristic filters are resolved on association data in ABAP,
+    " so we need the full root set before paging.
+    IF lv_has_char_filter = abap_true.
+      CLEAR lv_fetch_rows.
     ENDIF.
 
     DATA(lv_select_list) = get_select_list_from_request( io_request ).
@@ -202,6 +229,14 @@ CLASS /BITMYM/CL_PRODUCT_CATALOG_QP IMPLEMENTATION.
       ENDLOOP.
     ENDIF.
 
+    IF lv_has_char_filter = abap_true.
+      apply_characteristic_filters(
+        EXPORTING
+          io_filter = lo_filter
+        CHANGING
+          ct_data   = lt_data ).
+    ENDIF.
+
     IF lv_expand_child = abap_true AND lt_data IS NOT INITIAL.
       SELECT
         _child~NodeID,
@@ -232,15 +267,19 @@ CLASS /BITMYM/CL_PRODUCT_CATALOG_QP IMPLEMENTATION.
     ENDIF.
 
     IF lv_count_requested = abap_true.
-      IF lv_where IS INITIAL.
-        SELECT COUNT( * )
-          FROM (lv_from_syntax)
-          INTO @lv_count.
+      IF lv_has_char_filter = abap_true.
+        lv_count = lines( lt_data ).
       ELSE.
-        SELECT COUNT( * )
-          FROM (lv_from_syntax)
-          WHERE (lv_where)
-          INTO @lv_count.
+        IF lv_where IS INITIAL.
+          SELECT COUNT( * )
+            FROM (lv_from_syntax)
+            INTO @lv_count.
+        ELSE.
+          SELECT COUNT( * )
+            FROM (lv_from_syntax)
+            WHERE (lv_where)
+            INTO @lv_count.
+        ENDIF.
       ENDIF.
 
       io_response->set_total_number_of_records( lv_count ).
@@ -502,7 +541,8 @@ CLASS /BITMYM/CL_PRODUCT_CATALOG_QP IMPLEMENTATION.
 
       IF lv_name = 'PARENTNODEID'
          OR lv_name = 'MAXDEPTH'
-         OR lv_name = 'P_MAX_DEPTH'.
+         OR lv_name = 'P_MAX_DEPTH'
+         OR lv_name CP '_CHARACTERISTICS*'.
         CONTINUE.
       ENDIF.
 
@@ -572,6 +612,136 @@ CLASS /BITMYM/CL_PRODUCT_CATALOG_QP IMPLEMENTATION.
         rv_where = |{ rv_where } AND { lv_search_clause }|.
       ENDIF.
     ENDIF.
+  ENDMETHOD.
+
+
+  METHOD apply_characteristic_filters.
+    DATA lt_name_ranges TYPE if_rap_query_filter=>tt_name_range_pairs.
+
+    IF io_filter IS NOT BOUND OR ct_data IS INITIAL.
+      RETURN.
+    ENDIF.
+
+    TRY.
+        lt_name_ranges = io_filter->get_as_ranges( ).
+      CATCH cx_root.
+        RETURN.
+    ENDTRY.
+
+    DATA lr_classification TYPE REF TO data.
+    CREATE DATA lr_classification TYPE /bitmym/i_classification.
+    DATA(lo_class_descr) = CAST cl_abap_structdescr(
+      cl_abap_typedescr=>describe_by_data_ref( lr_classification ) ).
+    DATA(lt_class_components) = lo_class_descr->get_components( ).
+    FIELD-SYMBOLS <ls_component> LIKE LINE OF lt_class_components.
+
+    LOOP AT lt_name_ranges INTO DATA(ls_name_range).
+      DATA(lv_name_upper) = to_upper( ls_name_range-name ).
+      IF lv_name_upper NP '_CHARACTERISTICS*' OR ls_name_range-range IS INITIAL.
+        CONTINUE.
+      ENDIF.
+
+      DATA(lv_char_field) = lv_name_upper.
+      REPLACE FIRST OCCURRENCE OF '_CHARACTERISTICS/' IN lv_char_field WITH ''.
+      REPLACE FIRST OCCURRENCE OF '_CHARACTERISTICS.' IN lv_char_field WITH ''.
+      SHIFT lv_char_field LEFT DELETING LEADING '/'.
+      SHIFT lv_char_field LEFT DELETING LEADING '.'.
+      IF lv_char_field IS INITIAL.
+        CONTINUE.
+      ENDIF.
+
+      READ TABLE lt_class_components ASSIGNING <ls_component>
+        WITH KEY name = lv_char_field.
+      IF sy-subrc <> 0.
+        CONTINUE.
+      ENDIF.
+
+      DATA lt_node_range TYPE RANGE OF /bitmym/i_classification-clfnobjectid.
+      LOOP AT ct_data ASSIGNING FIELD-SYMBOL(<ls_data_node>).
+        APPEND VALUE #(
+          sign   = 'I'
+          option = 'EQ'
+          low    = CONV /bitmym/i_classification-clfnobjectid( <ls_data_node>-nodeid ) )
+          TO lt_node_range.
+      ENDLOOP.
+      IF lt_node_range IS INITIAL.
+        CLEAR ct_data.
+        RETURN.
+      ENDIF.
+
+      DATA(lv_field_clause) = ``.
+      DATA(lv_first) = abap_true.
+      LOOP AT ls_name_range-range INTO DATA(ls_range).
+        DATA(lv_low) = CONV string( ls_range-low ).
+        DATA(lv_high) = CONV string( ls_range-high ).
+        REPLACE ALL OCCURRENCES OF '''' IN lv_low WITH ''''''.
+        REPLACE ALL OCCURRENCES OF '''' IN lv_high WITH ''''''.
+        DATA(lv_cond) = ``.
+
+        CASE ls_range-option.
+          WHEN 'EQ'.
+            lv_cond = |{ lv_char_field } = '{ lv_low }'|.
+          WHEN 'NE'.
+            lv_cond = |{ lv_char_field } <> '{ lv_low }'|.
+          WHEN 'GE'.
+            lv_cond = |{ lv_char_field } >= '{ lv_low }'|.
+          WHEN 'LE'.
+            lv_cond = |{ lv_char_field } <= '{ lv_low }'|.
+          WHEN 'GT'.
+            lv_cond = |{ lv_char_field } > '{ lv_low }'|.
+          WHEN 'LT'.
+            lv_cond = |{ lv_char_field } < '{ lv_low }'|.
+          WHEN 'BT'.
+            lv_cond = |{ lv_char_field } BETWEEN '{ lv_low }' AND '{ lv_high }'|.
+          WHEN 'CP'.
+            DATA(lv_pattern) = lv_low.
+            REPLACE ALL OCCURRENCES OF '*' IN lv_pattern WITH '%'.
+            lv_cond = |{ lv_char_field } LIKE '{ lv_pattern }'|.
+          WHEN OTHERS.
+            CONTINUE.
+        ENDCASE.
+
+        IF ls_range-sign = 'E'.
+          lv_cond = |NOT ( { lv_cond } )|.
+        ENDIF.
+
+        IF lv_first = abap_true.
+          lv_field_clause = |( { lv_cond } )|.
+          lv_first = abap_false.
+        ELSE.
+          lv_field_clause = |{ lv_field_clause } OR ( { lv_cond } )|.
+        ENDIF.
+      ENDLOOP.
+
+      IF lv_field_clause IS INITIAL.
+        CONTINUE.
+      ENDIF.
+
+      DATA lt_matching_nodes TYPE SORTED TABLE OF /bitmym/i_classification-clfnobjectid WITH UNIQUE KEY table_line.
+      SELECT DISTINCT ClfnObjectID
+        FROM /BITMYM/I_Classification
+        WHERE ClfnObjectID IN @lt_node_range
+          AND (lv_field_clause)
+        INTO TABLE @lt_matching_nodes.
+
+      IF lt_matching_nodes IS INITIAL.
+        CLEAR ct_data.
+        RETURN.
+      ENDIF.
+
+      DATA lt_matching_range TYPE RANGE OF /bitmym/i_product_catalog_hry-nodeid.
+      LOOP AT lt_matching_nodes INTO DATA(lv_match_nodeid).
+        APPEND VALUE #(
+          sign = 'I'
+          option = 'EQ'
+          low = CONV /bitmym/i_product_catalog_hry-nodeid( lv_match_nodeid ) ) TO lt_matching_range.
+      ENDLOOP.
+
+      DELETE ct_data WHERE nodeid NOT IN lt_matching_range.
+      IF ct_data IS INITIAL.
+        RETURN.
+      ENDIF.
+    ENDLOOP.
   ENDMETHOD.
 
 
