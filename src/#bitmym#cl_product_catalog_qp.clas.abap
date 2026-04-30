@@ -709,12 +709,21 @@ CLASS /BITMYM/CL_PRODUCT_CATALOG_QP IMPLEMENTATION.
       DATA(lv_field_clause) = ``.
       DATA(lv_first) = abap_true.
 
-      IF lv_name CP |{ gc_assoc_characteristics }*|.
+      IF lv_name CP |{ gc_assoc_characteristics }*|
+         OR lv_name = 'CHARVALUE'
+         OR lv_name = 'CHARDESCRIPTION'
+         OR lv_name = 'CHARID'.
         DATA(lv_char_field) = lv_name.
-        REPLACE FIRST OCCURRENCE OF '_CHARACTERISTICS/' IN lv_char_field WITH ''.
-        REPLACE FIRST OCCURRENCE OF '_CHARACTERISTICS.' IN lv_char_field WITH ''.
-        SHIFT lv_char_field LEFT DELETING LEADING '/'.
-        SHIFT lv_char_field LEFT DELETING LEADING '.'.
+        IF lv_name = 'CHARVALUE'
+           OR lv_name = 'CHARDESCRIPTION'
+           OR lv_name = 'CHARID'.
+          lv_char_field = lv_name.
+        ELSE.
+          REPLACE FIRST OCCURRENCE OF '_CHARACTERISTICS/' IN lv_char_field WITH ''.
+          REPLACE FIRST OCCURRENCE OF '_CHARACTERISTICS.' IN lv_char_field WITH ''.
+          SHIFT lv_char_field LEFT DELETING LEADING '/'.
+          SHIFT lv_char_field LEFT DELETING LEADING '.'.
+        ENDIF.
         IF lv_char_field IS INITIAL.
           CONTINUE.
         ENDIF.
