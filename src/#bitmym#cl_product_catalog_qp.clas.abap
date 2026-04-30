@@ -119,6 +119,8 @@ CLASS /BITMYM/CL_PRODUCT_CATALOG_QP DEFINITION
       IMPORTING
         iv_select_list TYPE string
         iv_from_syntax TYPE string
+        iv_root_node   TYPE /bitmym/i_product_catalog_hry-nodeid
+        iv_max_depth   TYPE i
         iv_where       TYPE string
         iv_orderby     TYPE string
         iv_fetch_rows  TYPE i
@@ -136,6 +138,8 @@ CLASS /BITMYM/CL_PRODUCT_CATALOG_QP DEFINITION
     METHODS get_total_count
       IMPORTING
         iv_from_syntax      TYPE string
+        iv_root_node        TYPE /bitmym/i_product_catalog_hry-nodeid
+        iv_max_depth        TYPE i
         iv_where            TYPE string
       RETURNING
         VALUE(rv_count)     TYPE int8.
@@ -157,6 +161,25 @@ CLASS /BITMYM/CL_PRODUCT_CATALOG_QP DEFINITION
     METHODS get_classification_fields
       RETURNING
         VALUE(rt_fields) TYPE tty_name_set.
+
+    METHODS read_root_data_hry
+      IMPORTING
+        iv_select_list TYPE string
+        iv_where       TYPE string
+        iv_orderby     TYPE string
+        iv_fetch_rows  TYPE i
+        iv_root_node   TYPE /bitmym/i_product_catalog_hry-nodeid
+        iv_max_depth   TYPE i
+      CHANGING
+        ct_data        TYPE tty_product_catalog.
+
+    METHODS get_total_count_hry
+      IMPORTING
+        iv_where       TYPE string
+        iv_root_node   TYPE /bitmym/i_product_catalog_hry-nodeid
+        iv_max_depth   TYPE i
+      RETURNING
+        VALUE(rv_count) TYPE int8.
 
 ENDCLASS.
 
@@ -219,14 +242,19 @@ CLASS /BITMYM/CL_PRODUCT_CATALOG_QP IMPLEMENTATION.
       iv_page_size  = lv_page_size ).
 
     DATA(lv_select_list) = get_select_list_from_request( io_request ).
-    DATA(lv_root_node_sql) = CONV string( lv_root_node ).
-    REPLACE ALL OCCURRENCES OF '''' IN lv_root_node_sql WITH ''''''.
-    DATA(lv_from_syntax) = |{ gv_source_cds }( p_root_node = '{ lv_root_node_sql }', p_max_depth = { lv_max_depth } )|.
+    DATA(lv_from_syntax) = ||.
+    IF gv_source_cds <> gc_source_product_hry.
+      DATA(lv_root_node_sql) = CONV string( lv_root_node ).
+      REPLACE ALL OCCURRENCES OF '''' IN lv_root_node_sql WITH ''''''.
+      lv_from_syntax = |{ gv_source_cds }( p_root_node = '{ lv_root_node_sql }', p_max_depth = { lv_max_depth } )|.
+    ENDIF.
 
     read_root_data(
       EXPORTING
         iv_select_list = lv_select_list
         iv_from_syntax = lv_from_syntax
+        iv_root_node   = lv_root_node
+        iv_max_depth   = lv_max_depth
         iv_where       = lv_where
         iv_orderby     = lv_orderby
         iv_fetch_rows  = lv_fetch_rows
@@ -244,6 +272,8 @@ CLASS /BITMYM/CL_PRODUCT_CATALOG_QP IMPLEMENTATION.
     IF lv_count_requested = abap_true.
       lv_count = get_total_count(
         iv_from_syntax = lv_from_syntax
+        iv_root_node   = lv_root_node
+        iv_max_depth   = lv_max_depth
         iv_where       = lv_where ).
       io_response->set_total_number_of_records( lv_count ).
     ENDIF.
@@ -304,6 +334,47 @@ CLASS /BITMYM/CL_PRODUCT_CATALOG_QP IMPLEMENTATION.
     CLEAR ct_data.
 
     DATA(lv_has_row_limit) = xsdbool( iv_fetch_rows > 0 ).
+
+    IF gv_source_cds = gc_source_product_hry.
+      IF iv_where IS INITIAL.
+        IF lv_has_row_limit = abap_true.
+          SELECT (iv_select_list)
+            FROM /bitmym/i_product_catalog_hry(
+                   p_root_node = @iv_root_node,
+                   p_max_depth = @iv_max_depth )
+            ORDER BY (iv_orderby)
+            INTO CORRESPONDING FIELDS OF TABLE @ct_data
+            UP TO @iv_fetch_rows ROWS.
+        ELSE.
+          SELECT (iv_select_list)
+            FROM /bitmym/i_product_catalog_hry(
+                   p_root_node = @iv_root_node,
+                   p_max_depth = @iv_max_depth )
+            ORDER BY (iv_orderby)
+            INTO CORRESPONDING FIELDS OF TABLE @ct_data.
+        ENDIF.
+      ELSE.
+        IF lv_has_row_limit = abap_true.
+          SELECT DISTINCT (iv_select_list)
+            FROM /bitmym/i_product_catalog_hry(
+                   p_root_node = @iv_root_node,
+                   p_max_depth = @iv_max_depth )
+            WHERE (iv_where)
+            ORDER BY (iv_orderby)
+            INTO CORRESPONDING FIELDS OF TABLE @ct_data
+            UP TO @iv_fetch_rows ROWS.
+        ELSE.
+          SELECT DISTINCT (iv_select_list)
+            FROM /bitmym/i_product_catalog_hry(
+                   p_root_node = @iv_root_node,
+                   p_max_depth = @iv_max_depth )
+            WHERE (iv_where)
+            ORDER BY (iv_orderby)
+            INTO CORRESPONDING FIELDS OF TABLE @ct_data.
+        ENDIF.
+      ENDIF.
+      RETURN.
+    ENDIF.
 
     IF iv_where IS INITIAL.
       IF lv_has_row_limit = abap_true.
@@ -445,6 +516,24 @@ CLASS /BITMYM/CL_PRODUCT_CATALOG_QP IMPLEMENTATION.
 
 
   METHOD get_total_count.
+    IF gv_source_cds = gc_source_product_hry.
+      IF iv_where IS INITIAL.
+        SELECT COUNT( * )
+          FROM /bitmym/i_product_catalog_hry(
+                 p_root_node = @iv_root_node,
+                 p_max_depth = @iv_max_depth )
+          INTO @rv_count.
+      ELSE.
+        SELECT COUNT( * )
+          FROM /bitmym/i_product_catalog_hry(
+                 p_root_node = @iv_root_node,
+                 p_max_depth = @iv_max_depth )
+          WHERE (iv_where)
+          INTO @rv_count.
+      ENDIF.
+      RETURN.
+    ENDIF.
+
     IF iv_where IS INITIAL.
       SELECT COUNT( * )
         FROM (iv_from_syntax)
