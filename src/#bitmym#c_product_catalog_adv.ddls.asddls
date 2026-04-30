@@ -2,6 +2,7 @@
 @AccessControl.authorizationCheck: #NOT_REQUIRED
 @EndUserText.label: '/BITMYM/C_PRODUCT_CATALOG'
 @Metadata.ignorePropagatedAnnotations: true
+@Search.searchable: true
 define view entity /BITMYM/C_PRODUCT_CATALOG_ADV
   as select from /BITMYM/I_PRODUCT_CATALOG_ADV
   (  p_root_node: '' ,
@@ -19,11 +20,14 @@ define view entity /BITMYM/C_PRODUCT_CATALOG_ADV
       StatusFlag,
 
       HierarchyParentRank,
+      @Search.defaultSearchElement: true
       H.NodeText,
       H.NodeClass,
       H.NodeObjectType,
+      @Search.defaultSearchElement: true
       H.ParentText,
       _Characteristics,
       _Child,
+      @Search.defaultSearchElement: true
       _Items
 }
