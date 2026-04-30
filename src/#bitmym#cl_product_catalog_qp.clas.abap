@@ -38,7 +38,7 @@ CLASS /BITMYM/CL_PRODUCT_CATALOG_QP DEFINITION
         _child             TYPE STANDARD TABLE OF /bitmym/i_product_catalog_hry WITH EMPTY KEY,
       END OF ty_product_catalog,
       tty_product_catalog TYPE STANDARD TABLE OF ty_product_catalog WITH EMPTY KEY,
-      tty_nodeid_range    TYPE RANGE OF /bitmym/i_product_catalog_hry-nodeid.
+      tty_nodeid_values   TYPE SORTED TABLE OF /bitmym/i_product_catalog_hry-nodeid WITH UNIQUE KEY table_line.
 
     DATA gv_source_cds TYPE string.
 
@@ -86,7 +86,7 @@ CLASS /BITMYM/CL_PRODUCT_CATALOG_QP DEFINITION
       EXPORTING
         ev_filter_applied     TYPE abap_bool
       RETURNING
-        VALUE(rt_nodeid_range) TYPE tty_nodeid_range.
+        VALUE(rt_nodeids)     TYPE tty_nodeid_values.
 
     METHODS has_characteristic_filter
       IMPORTING
@@ -129,7 +129,7 @@ CLASS /BITMYM/CL_PRODUCT_CATALOG_QP DEFINITION
         iv_orderby          TYPE string
         iv_fetch_rows       TYPE i
         iv_apply_node_filter TYPE abap_bool
-        it_nodeid_range     TYPE tty_nodeid_range
+        it_nodeids          TYPE tty_nodeid_values
       CHANGING
         ct_data             TYPE tty_product_catalog.
 
@@ -146,7 +146,7 @@ CLASS /BITMYM/CL_PRODUCT_CATALOG_QP DEFINITION
         iv_from_syntax      TYPE string
         iv_where            TYPE string
         iv_apply_node_filter TYPE abap_bool
-        it_nodeid_range     TYPE tty_nodeid_range
+        it_nodeids          TYPE tty_nodeid_values
       RETURNING
         VALUE(rv_count)     TYPE int8.
 
@@ -241,7 +241,7 @@ CLASS /BITMYM/CL_PRODUCT_CATALOG_QP IMPLEMENTATION.
           iv_orderby           = lv_orderby
           iv_fetch_rows        = lv_fetch_rows
           iv_apply_node_filter = lv_char_filter_applied
-          it_nodeid_range      = lt_char_nodeids
+          it_nodeids           = lt_char_nodeids
         CHANGING
           ct_data              = lt_data ).
 
@@ -258,7 +258,7 @@ CLASS /BITMYM/CL_PRODUCT_CATALOG_QP IMPLEMENTATION.
           iv_from_syntax       = lv_from_syntax
           iv_where             = lv_where
           iv_apply_node_filter = lv_char_filter_applied
-          it_nodeid_range      = lt_char_nodeids ).
+          it_nodeids           = lt_char_nodeids ).
         io_response->set_total_number_of_records( lv_count ).
       ENDIF.
     ENDIF.
@@ -318,26 +318,63 @@ CLASS /BITMYM/CL_PRODUCT_CATALOG_QP IMPLEMENTATION.
   METHOD read_root_data.
     CLEAR ct_data.
 
-    IF iv_apply_node_filter = abap_true AND it_nodeid_range IS INITIAL.
+    IF iv_apply_node_filter = abap_true AND it_nodeids IS INITIAL.
       RETURN.
     ENDIF.
 
     DATA(lv_has_row_limit) = xsdbool( iv_fetch_rows > 0 ).
 
+    IF iv_apply_node_filter = abap_true.
+      IF iv_where IS INITIAL.
+        IF lv_has_row_limit = abap_true.
+          SELECT (iv_select_list)
+            FROM (iv_from_syntax)
+            INNER JOIN @it_nodeids AS nf
+              ON nf~table_line = nodeid
+            ORDER BY (iv_orderby)
+            INTO CORRESPONDING FIELDS OF TABLE @ct_data
+            UP TO @iv_fetch_rows ROWS.
+        ELSE.
+          SELECT (iv_select_list)
+            FROM (iv_from_syntax)
+            INNER JOIN @it_nodeids AS nf
+              ON nf~table_line = nodeid
+            ORDER BY (iv_orderby)
+            INTO CORRESPONDING FIELDS OF TABLE @ct_data.
+        ENDIF.
+      ELSE.
+        IF lv_has_row_limit = abap_true.
+          SELECT DISTINCT (iv_select_list)
+            FROM (iv_from_syntax)
+            INNER JOIN @it_nodeids AS nf
+              ON nf~table_line = nodeid
+            WHERE (iv_where)
+            ORDER BY (iv_orderby)
+            INTO CORRESPONDING FIELDS OF TABLE @ct_data
+            UP TO @iv_fetch_rows ROWS.
+        ELSE.
+          SELECT DISTINCT (iv_select_list)
+            FROM (iv_from_syntax)
+            INNER JOIN @it_nodeids AS nf
+              ON nf~table_line = nodeid
+            WHERE (iv_where)
+            ORDER BY (iv_orderby)
+            INTO CORRESPONDING FIELDS OF TABLE @ct_data.
+        ENDIF.
+      ENDIF.
+      RETURN.
+    ENDIF.
+
     IF iv_where IS INITIAL.
       IF lv_has_row_limit = abap_true.
         SELECT (iv_select_list)
           FROM (iv_from_syntax)
-          WHERE ( @iv_apply_node_filter = @abap_false
-                  OR nodeid IN @it_nodeid_range )
           ORDER BY (iv_orderby)
           INTO CORRESPONDING FIELDS OF TABLE @ct_data
           UP TO @iv_fetch_rows ROWS.
       ELSE.
         SELECT (iv_select_list)
           FROM (iv_from_syntax)
-          WHERE ( @iv_apply_node_filter = @abap_false
-                  OR nodeid IN @it_nodeid_range )
           ORDER BY (iv_orderby)
           INTO CORRESPONDING FIELDS OF TABLE @ct_data.
       ENDIF.
@@ -346,8 +383,6 @@ CLASS /BITMYM/CL_PRODUCT_CATALOG_QP IMPLEMENTATION.
         SELECT DISTINCT (iv_select_list)
           FROM (iv_from_syntax)
           WHERE (iv_where)
-            AND ( @iv_apply_node_filter = @abap_false
-                  OR nodeid IN @it_nodeid_range )
           ORDER BY (iv_orderby)
           INTO CORRESPONDING FIELDS OF TABLE @ct_data
           UP TO @iv_fetch_rows ROWS.
@@ -355,8 +390,6 @@ CLASS /BITMYM/CL_PRODUCT_CATALOG_QP IMPLEMENTATION.
         SELECT DISTINCT (iv_select_list)
           FROM (iv_from_syntax)
           WHERE (iv_where)
-            AND ( @iv_apply_node_filter = @abap_false
-                  OR nodeid IN @it_nodeid_range )
           ORDER BY (iv_orderby)
           INTO CORRESPONDING FIELDS OF TABLE @ct_data.
       ENDIF.
@@ -422,35 +455,38 @@ CLASS /BITMYM/CL_PRODUCT_CATALOG_QP IMPLEMENTATION.
 
 
   METHOD get_total_count.
-    IF iv_apply_node_filter = abap_true AND it_nodeid_range IS INITIAL.
+    IF iv_apply_node_filter = abap_true AND it_nodeids IS INITIAL.
       rv_count = 0.
       RETURN.
     ENDIF.
 
+    IF iv_apply_node_filter = abap_true.
+      IF iv_where IS INITIAL.
+        SELECT COUNT( * )
+          FROM (iv_from_syntax)
+          INNER JOIN @it_nodeids AS nf
+            ON nf~table_line = nodeid
+          INTO @rv_count.
+      ELSE.
+        SELECT COUNT( * )
+          FROM (iv_from_syntax)
+          INNER JOIN @it_nodeids AS nf
+            ON nf~table_line = nodeid
+          WHERE (iv_where)
+          INTO @rv_count.
+      ENDIF.
+      RETURN.
+    ENDIF.
+
     IF iv_where IS INITIAL.
-      IF iv_apply_node_filter = abap_true.
-        SELECT COUNT( * )
-          FROM (iv_from_syntax)
-          WHERE nodeid IN @it_nodeid_range
-          INTO @rv_count.
-      ELSE.
-        SELECT COUNT( * )
-          FROM (iv_from_syntax)
-          INTO @rv_count.
-      ENDIF.
+      SELECT COUNT( * )
+        FROM (iv_from_syntax)
+        INTO @rv_count.
     ELSE.
-      IF iv_apply_node_filter = abap_true.
-        SELECT COUNT( * )
-          FROM (iv_from_syntax)
-          WHERE (iv_where)
-            AND nodeid IN @it_nodeid_range
-          INTO @rv_count.
-      ELSE.
-        SELECT COUNT( * )
-          FROM (iv_from_syntax)
-          WHERE (iv_where)
-          INTO @rv_count.
-      ENDIF.
+      SELECT COUNT( * )
+        FROM (iv_from_syntax)
+        WHERE (iv_where)
+        INTO @rv_count.
     ENDIF.
   ENDMETHOD.
 
@@ -494,7 +530,7 @@ CLASS /BITMYM/CL_PRODUCT_CATALOG_QP IMPLEMENTATION.
 
 
   METHOD get_characteristic_node_range.
-    CLEAR rt_nodeid_range.
+    CLEAR rt_nodeids.
     ev_filter_applied = abap_false.
 
     IF io_filter IS NOT BOUND.
@@ -618,11 +654,8 @@ CLASS /BITMYM/CL_PRODUCT_CATALOG_QP IMPLEMENTATION.
     ENDIF.
 
     LOOP AT lt_matching_all INTO DATA(lv_match_nodeid).
-      APPEND VALUE #(
-        sign   = 'I'
-        option = 'EQ'
-        low    = CONV /bitmym/i_product_catalog_hry-nodeid( lv_match_nodeid ) )
-        TO rt_nodeid_range.
+      INSERT CONV /bitmym/i_product_catalog_hry-nodeid( lv_match_nodeid )
+        INTO TABLE rt_nodeids.
     ENDLOOP.
   ENDMETHOD.
 
@@ -841,7 +874,8 @@ CLASS /BITMYM/CL_PRODUCT_CATALOG_QP IMPLEMENTATION.
         && |OR NODEID IN ( |
         && |SELECT DISTINCT ClfnObjectID |
         && |FROM /BITMYM/I_Classification |
-        && |WHERE UPPER( CHARVALUE ) LIKE '%{ lv_search }%' ) )|.
+        && |WHERE CONTAINS( CHARVALUE, '{ lv_search }' ) |
+        && |   OR UPPER( CHARVALUE ) LIKE '%{ lv_search }%' ) )|.
       IF rv_where IS INITIAL.
         rv_where = lv_search_clause.
       ELSE.
