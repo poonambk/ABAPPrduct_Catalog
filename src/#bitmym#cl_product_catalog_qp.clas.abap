@@ -162,25 +162,6 @@ CLASS /BITMYM/CL_PRODUCT_CATALOG_QP DEFINITION
       RETURNING
         VALUE(rt_fields) TYPE tty_name_set.
 
-    METHODS read_root_data_hry
-      IMPORTING
-        iv_select_list TYPE string
-        iv_where       TYPE string
-        iv_orderby     TYPE string
-        iv_fetch_rows  TYPE i
-        iv_root_node   TYPE /bitmym/i_product_catalog_hry-nodeid
-        iv_max_depth   TYPE i
-      CHANGING
-        ct_data        TYPE tty_product_catalog.
-
-    METHODS get_total_count_hry
-      IMPORTING
-        iv_where       TYPE string
-        iv_root_node   TYPE /bitmym/i_product_catalog_hry-nodeid
-        iv_max_depth   TYPE i
-      RETURNING
-        VALUE(rv_count) TYPE int8.
-
 ENDCLASS.
 
 
