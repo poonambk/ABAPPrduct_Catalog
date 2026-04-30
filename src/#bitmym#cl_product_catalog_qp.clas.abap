@@ -858,7 +858,12 @@ CLASS /BITMYM/CL_PRODUCT_CATALOG_QP IMPLEMENTATION.
       REPLACE ALL OCCURRENCES OF '*' IN lv_search WITH '%'.
       TRANSLATE lv_search TO UPPER CASE.
 
-      DATA(lv_search_clause) = |( UPPER( NODETEXT ) LIKE '%{ lv_search }%' )|.
+      DATA(lv_search_clause) =
+        |( UPPER( NODETEXT ) LIKE '%{ lv_search }%' |
+        && |OR NODEID IN ( |
+        && |SELECT DISTINCT ClfnObjectID |
+        && |FROM /BITMYM/I_Classification |
+        && |WHERE UPPER( CHARVALUE ) LIKE '%{ lv_search }%' ) )|.
       IF rv_where IS INITIAL.
         rv_where = lv_search_clause.
       ELSE.
