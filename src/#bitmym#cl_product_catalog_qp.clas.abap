@@ -38,9 +38,18 @@ CLASS /BITMYM/CL_PRODUCT_CATALOG_QP DEFINITION
         _child             TYPE STANDARD TABLE OF /bitmym/i_product_catalog_hry WITH EMPTY KEY,
       END OF ty_product_catalog,
       tty_product_catalog TYPE STANDARD TABLE OF ty_product_catalog WITH EMPTY KEY,
-      tty_nodeid_values   TYPE SORTED TABLE OF /bitmym/i_product_catalog_hry-nodeid WITH UNIQUE KEY table_line.
+      tty_nodeid_values   TYPE SORTED TABLE OF /bitmym/i_product_catalog_hry-nodeid WITH UNIQUE KEY table_line,
+      tty_name_set        TYPE SORTED TABLE OF string WITH UNIQUE KEY table_line,
+      BEGIN OF ty_source_field_cache,
+        source_cds TYPE string,
+        fields     TYPE tty_name_set,
+      END OF ty_source_field_cache,
+      tty_source_field_cache TYPE HASHED TABLE OF ty_source_field_cache WITH UNIQUE KEY source_cds.
 
     DATA gv_source_cds TYPE string.
+    CLASS-DATA gt_source_field_cache TYPE tty_source_field_cache.
+    CLASS-DATA gt_classification_fields TYPE tty_name_set.
+    CLASS-DATA gv_classification_fields_loaded TYPE abap_bool.
 
     METHODS get_root_node
       IMPORTING
@@ -157,6 +166,16 @@ CLASS /BITMYM/CL_PRODUCT_CATALOG_QP DEFINITION
         iv_page_size  TYPE i
       CHANGING
         ct_data       TYPE tty_product_catalog.
+
+    METHODS get_source_scalar_fields
+      IMPORTING
+        iv_source_cds TYPE string
+      RETURNING
+        VALUE(rt_fields) TYPE tty_name_set.
+
+    METHODS get_classification_fields
+      RETURNING
+        VALUE(rt_fields) TYPE tty_name_set.
 
 ENDCLASS.
 
@@ -542,11 +561,7 @@ CLASS /BITMYM/CL_PRODUCT_CATALOG_QP IMPLEMENTATION.
       RETURN.
     ENDIF.
 
-    DATA lr_classification TYPE REF TO data.
-    CREATE DATA lr_classification TYPE /bitmym/i_classification.
-    DATA(lo_class_descr) = CAST cl_abap_structdescr(
-      cl_abap_typedescr=>describe_by_data_ref( lr_classification ) ).
-    DATA(lt_class_components) = lo_class_descr->get_components( ).
+    DATA(lt_class_components) = get_classification_fields( ).
     FIELD-SYMBOLS <ls_component> LIKE LINE OF lt_class_components.
 
     DATA lt_matching_all TYPE SORTED TABLE OF /bitmym/i_classification-clfnobjectid WITH UNIQUE KEY table_line.
@@ -931,11 +946,7 @@ CLASS /BITMYM/CL_PRODUCT_CATALOG_QP IMPLEMENTATION.
           lt_fields    TYPE STANDARD TABLE OF string WITH EMPTY KEY,
           lv_field     TYPE string.
 
-    DATA: lo_struct TYPE REF TO cl_abap_structdescr,
-          lt_comp   TYPE cl_abap_structdescr=>component_table.
-    DATA lr_data TYPE REF TO data.
-
-    FIELD-SYMBOLS <ls_comp> LIKE LINE OF lt_comp.
+    DATA(lt_comp) = get_source_scalar_fields( gv_source_cds ).
 
     TRY.
         lt_requested = io_request->get_requested_elements( ).
@@ -943,22 +954,15 @@ CLASS /BITMYM/CL_PRODUCT_CATALOG_QP IMPLEMENTATION.
         CLEAR lt_requested.
     ENDTRY.
 
-    CREATE DATA lr_data TYPE (gv_source_cds).
-    lo_struct ?= cl_abap_typedescr=>describe_by_data_ref( lr_data ).
-    lt_comp = lo_struct->get_components( ).
-
     LOOP AT lt_requested INTO DATA(lv_element).
       DATA(lv_name) = to_upper( lv_element ).
       IF lv_name CP '_*'.
         CONTINUE.
       ENDIF.
 
-      READ TABLE lt_comp ASSIGNING <ls_comp>
-        WITH KEY name = lv_name.
+      READ TABLE lt_comp TRANSPORTING NO FIELDS
+        WITH KEY table_line = lv_name.
       IF sy-subrc = 0.
-        IF <ls_comp>-type->kind = cl_abap_typedescr=>kind_table.
-          CONTINUE.
-        ENDIF.
         APPEND lv_name TO lt_fields.
       ENDIF.
     ENDLOOP.
@@ -983,6 +987,62 @@ CLASS /BITMYM/CL_PRODUCT_CATALOG_QP IMPLEMENTATION.
     IF rv_select_list IS INITIAL.
       rv_select_list = 'NODEID, PARENTNODEID'.
     ENDIF.
+  ENDMETHOD.
+
+
+  METHOD get_source_scalar_fields.
+    READ TABLE gt_source_field_cache INTO DATA(ls_cache)
+      WITH TABLE KEY source_cds = iv_source_cds.
+    IF sy-subrc = 0.
+      rt_fields = ls_cache-fields.
+      RETURN.
+    ENDIF.
+
+    DATA: lo_struct TYPE REF TO cl_abap_structdescr,
+          lt_comp   TYPE cl_abap_structdescr=>component_table.
+    DATA lr_data TYPE REF TO data.
+    FIELD-SYMBOLS <ls_comp> LIKE LINE OF lt_comp.
+
+    CREATE DATA lr_data TYPE (iv_source_cds).
+    lo_struct ?= cl_abap_typedescr=>describe_by_data_ref( lr_data ).
+    lt_comp = lo_struct->get_components( ).
+
+    CLEAR rt_fields.
+    LOOP AT lt_comp ASSIGNING <ls_comp>.
+      IF <ls_comp>-type->kind = cl_abap_typedescr=>kind_table.
+        CONTINUE.
+      ENDIF.
+      INSERT <ls_comp>-name INTO TABLE rt_fields.
+    ENDLOOP.
+
+    INSERT VALUE ty_source_field_cache(
+      source_cds = iv_source_cds
+      fields     = rt_fields ) INTO TABLE gt_source_field_cache.
+  ENDMETHOD.
+
+
+  METHOD get_classification_fields.
+    IF gv_classification_fields_loaded = abap_true.
+      rt_fields = gt_classification_fields.
+      RETURN.
+    ENDIF.
+
+    DATA: lo_struct TYPE REF TO cl_abap_structdescr,
+          lt_comp   TYPE cl_abap_structdescr=>component_table.
+    DATA lr_data TYPE REF TO data.
+    FIELD-SYMBOLS <ls_comp> LIKE LINE OF lt_comp.
+
+    CREATE DATA lr_data TYPE /bitmym/i_classification.
+    lo_struct ?= cl_abap_typedescr=>describe_by_data_ref( lr_data ).
+    lt_comp = lo_struct->get_components( ).
+
+    CLEAR gt_classification_fields.
+    LOOP AT lt_comp ASSIGNING <ls_comp>.
+      INSERT <ls_comp>-name INTO TABLE gt_classification_fields.
+    ENDLOOP.
+
+    gv_classification_fields_loaded = abap_true.
+    rt_fields = gt_classification_fields.
   ENDMETHOD.
 
 ENDCLASS.
