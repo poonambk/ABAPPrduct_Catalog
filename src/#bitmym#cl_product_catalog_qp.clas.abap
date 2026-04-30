@@ -611,16 +611,23 @@ CLASS /BITMYM/CL_PRODUCT_CATALOG_QP IMPLEMENTATION.
       ENDIF.
 
       DATA lt_matching_current TYPE SORTED TABLE OF /bitmym/i_classification-clfnobjectid WITH UNIQUE KEY table_line.
-      SELECT DISTINCT ClfnObjectID
-        FROM /BITMYM/I_Classification
-        WHERE (lv_field_clause)
-        INTO TABLE @lt_matching_current.
-
       IF lv_initialized = abap_false.
+        SELECT DISTINCT ClfnObjectID
+          FROM /BITMYM/I_Classification
+          WHERE (lv_field_clause)
+          INTO TABLE @lt_matching_current.
+
         lt_matching_all = lt_matching_current.
         lv_initialized = abap_true.
       ELSE.
-        DELETE lt_matching_all WHERE table_line NOT IN lt_matching_current.
+        SELECT DISTINCT c~ClfnObjectID
+          FROM /BITMYM/I_Classification AS c
+          INNER JOIN @lt_matching_all AS m
+            ON m~table_line = c~ClfnObjectID
+          WHERE (lv_field_clause)
+          INTO TABLE @lt_matching_current.
+
+        lt_matching_all = lt_matching_current.
       ENDIF.
 
       IF lt_matching_all IS INITIAL.
