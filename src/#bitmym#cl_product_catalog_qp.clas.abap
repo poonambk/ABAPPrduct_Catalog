@@ -78,6 +78,12 @@ CLASS /BITMYM/CL_PRODUCT_CATALOG_QP DEFINITION
       CHANGING
         ct_data   TYPE tty_product_catalog.
 
+    METHODS has_characteristic_filter
+      IMPORTING
+        io_filter                TYPE REF TO if_rap_query_filter
+      RETURNING
+        VALUE(rv_has_char_filter) TYPE abap_bool.
+
 ENDCLASS.
 
 
@@ -137,21 +143,7 @@ CLASS /BITMYM/CL_PRODUCT_CATALOG_QP IMPLEMENTATION.
       iv_search_expression = lv_search_expression ).
     lv_orderby = get_orderby_clause( lt_sort ).
 
-    DATA lv_has_char_filter TYPE abap_bool VALUE abap_false.
-    IF lo_filter IS BOUND.
-      TRY.
-          DATA(lt_name_ranges) = lo_filter->get_as_ranges( ).
-        CATCH cx_root.
-          CLEAR lt_name_ranges.
-      ENDTRY.
-
-      LOOP AT lt_name_ranges INTO DATA(ls_name_range).
-        IF to_upper( ls_name_range-name ) CP '_CHARACTERISTICS*'.
-          lv_has_char_filter = abap_true.
-          EXIT.
-        ENDIF.
-      ENDLOOP.
-    ENDIF.
+    DATA(lv_has_char_filter) = has_characteristic_filter( lo_filter ).
 
     DATA lv_expand_char TYPE abap_bool VALUE abap_false.
     DATA lv_expand_child TYPE abap_bool VALUE abap_false.
@@ -309,6 +301,28 @@ CLASS /BITMYM/CL_PRODUCT_CATALOG_QP IMPLEMENTATION.
       io_response->set_data( lt_data ).
     ENDIF.
 
+  ENDMETHOD.
+
+
+  METHOD has_characteristic_filter.
+    rv_has_char_filter = abap_false.
+
+    IF io_filter IS NOT BOUND.
+      RETURN.
+    ENDIF.
+
+    TRY.
+        DATA(lt_name_ranges) = io_filter->get_as_ranges( ).
+      CATCH cx_root.
+        RETURN.
+    ENDTRY.
+
+    LOOP AT lt_name_ranges INTO DATA(ls_name_range).
+      IF to_upper( ls_name_range-name ) CP '_CHARACTERISTICS*'.
+        rv_has_char_filter = abap_true.
+        RETURN.
+      ENDIF.
+    ENDLOOP.
   ENDMETHOD.
 
 
