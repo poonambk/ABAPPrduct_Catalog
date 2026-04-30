@@ -48,7 +48,7 @@ CLASS /BITMYM/CL_PRODUCT_CATALOG_QP DEFINITION
     DATA gv_source_cds TYPE string.
     CLASS-DATA gt_source_field_cache TYPE tty_source_field_cache.
     CLASS-DATA gt_classification_fields TYPE tty_name_set.
-    CLASS-DATA gv_classification_fields_loaded TYPE abap_bool.
+    CLASS-DATA gv_class_fields_loaded TYPE abap_bool.
 
     METHODS get_root_node
       IMPORTING
@@ -892,7 +892,7 @@ CLASS /BITMYM/CL_PRODUCT_CATALOG_QP IMPLEMENTATION.
 
 
   METHOD get_classification_fields.
-    IF gv_classification_fields_loaded = abap_true.
+    IF gv_class_fields_loaded = abap_true.
       rt_fields = gt_classification_fields.
       RETURN.
     ENDIF.
@@ -911,7 +911,7 @@ CLASS /BITMYM/CL_PRODUCT_CATALOG_QP IMPLEMENTATION.
       INSERT <ls_comp>-name INTO TABLE gt_classification_fields.
     ENDLOOP.
 
-    gv_classification_fields_loaded = abap_true.
+    gv_class_fields_loaded = abap_true.
     rt_fields = gt_classification_fields.
   ENDMETHOD.
 
