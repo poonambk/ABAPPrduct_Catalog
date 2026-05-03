@@ -252,12 +252,6 @@ CLASS /BITMYM/CL_PRODUCT_CATALOG_QP IMPLEMENTATION.
 
     DATA(lv_select_list) = get_select_list_from_request( io_request ).
     DATA(lv_root_node_sql) = CONV string( lv_root_node ).
-    IF lv_root_node_sql CO ` `.
-      CLEAR lv_root_node_sql.
-    ELSE.
-      SHIFT lv_root_node_sql LEFT DELETING LEADING space.
-      SHIFT lv_root_node_sql RIGHT DELETING TRAILING space.
-    ENDIF.
     REPLACE ALL OCCURRENCES OF '''' IN lv_root_node_sql WITH ''''''.
     DATA(lv_from_syntax) = |{ gv_source_cds }( p_root_node = '{ lv_root_node_sql }', p_max_depth = { lv_max_depth } )|.
 
