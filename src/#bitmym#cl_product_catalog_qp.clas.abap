@@ -371,6 +371,14 @@ CLASS /BITMYM/CL_PRODUCT_CATALOG_QP IMPLEMENTATION.
   METHOD read_root_data.
     CLEAR ct_data.
 
+    DATA lv_charvalue_filter TYPE /bitmym/i_classification-charvalue.
+    DATA lv_charid_filter TYPE /bitmym/i_classification-charid.
+    DATA lv_chardesc_filter TYPE /bitmym/i_classification-chardescription.
+
+    lv_charvalue_filter = CONV #( iv_charvalue ).
+    lv_charid_filter = CONV #( iv_charid ).
+    lv_chardesc_filter = CONV #( iv_chardescription ).
+
     DATA(lv_combined_where) = CONV string( iv_where ).
     DATA(lv_where_upper) = to_upper( lv_combined_where ).
     DATA(lv_has_char_where) = xsdbool(
@@ -387,9 +395,9 @@ CLASS /BITMYM/CL_PRODUCT_CATALOG_QP IMPLEMENTATION.
     IF lv_apply_char_filter = abap_true.
       SELECT DISTINCT clfnobjectid
         FROM /bitmym/i_classification
-        WHERE ( @iv_charvalue IS INITIAL OR charvalue = @iv_charvalue )
-          AND ( @iv_charid IS INITIAL OR charid = @iv_charid )
-          AND ( @iv_chardescription IS INITIAL OR chardescription = @iv_chardescription )
+        WHERE ( @lv_charvalue_filter IS INITIAL OR charvalue = @lv_charvalue_filter )
+          AND ( @lv_charid_filter IS INITIAL OR charid = @lv_charid_filter )
+          AND ( @lv_chardesc_filter IS INITIAL OR chardescription = @lv_chardesc_filter )
         INTO TABLE @lt_char_nodeids.
 
       IF lt_char_nodeids IS INITIAL.
@@ -545,6 +553,14 @@ CLASS /BITMYM/CL_PRODUCT_CATALOG_QP IMPLEMENTATION.
 
 
   METHOD get_total_count.
+    DATA lv_charvalue_filter TYPE /bitmym/i_classification-charvalue.
+    DATA lv_charid_filter TYPE /bitmym/i_classification-charid.
+    DATA lv_chardesc_filter TYPE /bitmym/i_classification-chardescription.
+
+    lv_charvalue_filter = CONV #( iv_charvalue ).
+    lv_charid_filter = CONV #( iv_charid ).
+    lv_chardesc_filter = CONV #( iv_chardescription ).
+
     DATA(lv_combined_where) = CONV string( iv_where ).
     DATA(lv_where_upper) = to_upper( lv_combined_where ).
     DATA(lv_has_char_where) = xsdbool(
@@ -561,9 +577,9 @@ CLASS /BITMYM/CL_PRODUCT_CATALOG_QP IMPLEMENTATION.
     IF lv_apply_char_filter = abap_true.
       SELECT DISTINCT clfnobjectid
         FROM /bitmym/i_classification
-        WHERE ( @iv_charvalue IS INITIAL OR charvalue = @iv_charvalue )
-          AND ( @iv_charid IS INITIAL OR charid = @iv_charid )
-          AND ( @iv_chardescription IS INITIAL OR chardescription = @iv_chardescription )
+        WHERE ( @lv_charvalue_filter IS INITIAL OR charvalue = @lv_charvalue_filter )
+          AND ( @lv_charid_filter IS INITIAL OR charid = @lv_charid_filter )
+          AND ( @lv_chardesc_filter IS INITIAL OR chardescription = @lv_chardesc_filter )
         INTO TABLE @lt_char_nodeids.
 
       IF lt_char_nodeids IS INITIAL.
