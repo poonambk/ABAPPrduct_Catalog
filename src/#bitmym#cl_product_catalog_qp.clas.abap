@@ -37,7 +37,7 @@ CLASS /BITMYM/CL_PRODUCT_CATALOG_QP DEFINITION
         hierarchytreesize   TYPE /bitmym/i_product_cat_hry_adv-hierarchytreesize,
         drillstate          TYPE /bitmym/c_product_catalog_adv-drillstate,
         statusflag          TYPE /bitmym/i_product_catalog_adv-statusflag,
-        _characteristics    TYPE STANDARD TABLE OF /bitmym/i_classification WITH EMPTY KEY,
+        _characteristics    TYPE STANDARD TABLE OF /bitmym/c_assort_characteristc WITH EMPTY KEY,
         _child              TYPE STANDARD TABLE OF /bitmym/i_product_catalog_hry WITH EMPTY KEY,
       END OF ty_product_catalog,
       tty_product_catalog TYPE STANDARD TABLE OF ty_product_catalog WITH EMPTY KEY,
@@ -374,29 +374,28 @@ CLASS /BITMYM/CL_PRODUCT_CATALOG_QP IMPLEMENTATION.
     DATA(lv_combined_where) = CONV string( iv_where ).
     DATA(lv_where_upper) = to_upper( lv_combined_where ).
     DATA(lv_has_char_where) = xsdbool(
-      lv_where_upper CS 'NODEID IN ( SELECT CLFNOBJECTID FROM /BITMYM/I_CLASSIFICATION'
-      OR lv_where_upper CS 'EXISTS ( SELECT 1 FROM /BITMYM/I_CLASSIFICATION' ).
+      lv_where_upper CS 'NODEID IN ( SELECT CLASSOBJECTID FROM /BITMYM/C_ASSORT_CHARACTERISTC'
+      OR lv_where_upper CS 'EXISTS ( SELECT 1 FROM /BITMYM/C_ASSORT_CHARACTERISTC' ).
     DATA(lv_apply_char_filter) = xsdbool(
       lv_has_char_where = abap_false
       AND ( iv_charvalue IS NOT INITIAL
          OR iv_charid IS NOT INITIAL
          OR iv_chardescription IS NOT INITIAL ) ).
     DATA(lv_char_filter_where) = CONV string( `` ).
-    DATA lt_char_nodeids TYPE STANDARD TABLE OF /bitmym/i_classification-clfnobjectid WITH EMPTY KEY.
+    DATA lt_char_nodeids TYPE STANDARD TABLE OF /bitmym/c_assort_characteristc-classobjectid WITH EMPTY KEY.
     DATA lt_char_node_range TYPE RANGE OF /bitmym/i_product_catalog_hry-nodeid.
 
     IF lv_apply_char_filter = abap_true.
       IF iv_charvalue IS NOT INITIAL.
         DATA(lv_charvalue_sql) = CONV string( iv_charvalue ).
         REPLACE ALL OCCURRENCES OF '''' IN lv_charvalue_sql WITH ''''''.
-        lv_char_filter_where = |valuechar = '{ lv_charvalue_sql }'|.
+        lv_char_filter_where = |charvalue = '{ lv_charvalue_sql }'|.
       ENDIF.
 
       IF iv_charid IS NOT INITIAL.
         DATA(lv_charid_sql) = CONV string( iv_charid ).
         REPLACE ALL OCCURRENCES OF '''' IN lv_charid_sql WITH ''''''.
-        DATA(lv_charid_predicate) =
-          |( charcinternalid = '{ lv_charid_sql }' OR characteristic = '{ lv_charid_sql }' )|.
+        DATA(lv_charid_predicate) = |charcinternalid = '{ lv_charid_sql }'|.
         lv_char_filter_where = COND string(
           WHEN lv_char_filter_where IS INITIAL
             THEN lv_charid_predicate
@@ -408,12 +407,12 @@ CLASS /BITMYM/CL_PRODUCT_CATALOG_QP IMPLEMENTATION.
         REPLACE ALL OCCURRENCES OF '''' IN lv_chardesc_sql WITH ''''''.
         lv_char_filter_where = COND string(
           WHEN lv_char_filter_where IS INITIAL
-            THEN |charcvaluedescription = '{ lv_chardesc_sql }'|
-            ELSE |{ lv_char_filter_where } AND charcvaluedescription = '{ lv_chardesc_sql }'| ).
+            THEN |characteristicdescription = '{ lv_chardesc_sql }'|
+            ELSE |{ lv_char_filter_where } AND characteristicdescription = '{ lv_chardesc_sql }'| ).
       ENDIF.
 
-      SELECT DISTINCT clfnobjectid
-        FROM /bitmym/i_classification
+      SELECT DISTINCT classobjectid
+        FROM /bitmym/c_assort_characteristc
         WHERE (lv_char_filter_where)
         INTO TABLE @lt_char_nodeids.
 
@@ -470,14 +469,14 @@ CLASS /BITMYM/CL_PRODUCT_CATALOG_QP IMPLEMENTATION.
     SELECT a~nodeid,
            b~*
       FROM @ct_data AS a
-      INNER JOIN /BITMYM/I_Classification AS b
-        ON b~ClfnObjectID = a~nodeid
+      INNER JOIN /BITMYM/C_ASSORT_CHARACTERISTC AS b
+        ON b~ClassObjectID = a~nodeid
       INTO TABLE @DATA(lt_joined_char).
 
     TYPES:
       BEGIN OF ty_char_bucket,
         nodeid TYPE /bitmym/i_product_catalog_hry-nodeid,
-        items  TYPE STANDARD TABLE OF /bitmym/i_classification WITH EMPTY KEY,
+        items  TYPE STANDARD TABLE OF /bitmym/c_assort_characteristc WITH EMPTY KEY,
       END OF ty_char_bucket,
       tty_char_bucket TYPE HASHED TABLE OF ty_char_bucket WITH UNIQUE KEY nodeid.
 
@@ -487,7 +486,7 @@ CLASS /BITMYM/CL_PRODUCT_CATALOG_QP IMPLEMENTATION.
       IF sy-subrc <> 0.
         INSERT VALUE #( nodeid = ls_joined_char-nodeid ) INTO TABLE lt_char_bucket ASSIGNING <ls_char_bucket>.
       ENDIF.
-      APPEND CORRESPONDING /bitmym/i_classification( ls_joined_char ) TO <ls_char_bucket>-items.
+      APPEND CORRESPONDING /bitmym/c_assort_characteristc( ls_joined_char ) TO <ls_char_bucket>-items.
     ENDLOOP.
 
     LOOP AT ct_data ASSIGNING FIELD-SYMBOL(<ls_data>).
@@ -573,29 +572,28 @@ CLASS /BITMYM/CL_PRODUCT_CATALOG_QP IMPLEMENTATION.
     DATA(lv_combined_where) = CONV string( iv_where ).
     DATA(lv_where_upper) = to_upper( lv_combined_where ).
     DATA(lv_has_char_where) = xsdbool(
-      lv_where_upper CS 'NODEID IN ( SELECT CLFNOBJECTID FROM /BITMYM/I_CLASSIFICATION'
-      OR lv_where_upper CS 'EXISTS ( SELECT 1 FROM /BITMYM/I_CLASSIFICATION' ).
+      lv_where_upper CS 'NODEID IN ( SELECT CLASSOBJECTID FROM /BITMYM/C_ASSORT_CHARACTERISTC'
+      OR lv_where_upper CS 'EXISTS ( SELECT 1 FROM /BITMYM/C_ASSORT_CHARACTERISTC' ).
     DATA(lv_apply_char_filter) = xsdbool(
       lv_has_char_where = abap_false
       AND ( iv_charvalue IS NOT INITIAL
          OR iv_charid IS NOT INITIAL
          OR iv_chardescription IS NOT INITIAL ) ).
     DATA(lv_char_filter_where) = CONV string( `` ).
-    DATA lt_char_nodeids TYPE STANDARD TABLE OF /bitmym/i_classification-clfnobjectid WITH EMPTY KEY.
+    DATA lt_char_nodeids TYPE STANDARD TABLE OF /bitmym/c_assort_characteristc-classobjectid WITH EMPTY KEY.
     DATA lt_char_node_range TYPE RANGE OF /bitmym/i_product_catalog_hry-nodeid.
 
     IF lv_apply_char_filter = abap_true.
       IF iv_charvalue IS NOT INITIAL.
         DATA(lv_charvalue_sql) = CONV string( iv_charvalue ).
         REPLACE ALL OCCURRENCES OF '''' IN lv_charvalue_sql WITH ''''''.
-        lv_char_filter_where = |valuechar = '{ lv_charvalue_sql }'|.
+        lv_char_filter_where = |charvalue = '{ lv_charvalue_sql }'|.
       ENDIF.
 
       IF iv_charid IS NOT INITIAL.
         DATA(lv_charid_sql) = CONV string( iv_charid ).
         REPLACE ALL OCCURRENCES OF '''' IN lv_charid_sql WITH ''''''.
-        DATA(lv_charid_predicate) =
-          |( charcinternalid = '{ lv_charid_sql }' OR characteristic = '{ lv_charid_sql }' )|.
+        DATA(lv_charid_predicate) = |charcinternalid = '{ lv_charid_sql }'|.
         lv_char_filter_where = COND string(
           WHEN lv_char_filter_where IS INITIAL
             THEN lv_charid_predicate
@@ -607,12 +605,12 @@ CLASS /BITMYM/CL_PRODUCT_CATALOG_QP IMPLEMENTATION.
         REPLACE ALL OCCURRENCES OF '''' IN lv_chardesc_sql WITH ''''''.
         lv_char_filter_where = COND string(
           WHEN lv_char_filter_where IS INITIAL
-            THEN |charcvaluedescription = '{ lv_chardesc_sql }'|
-            ELSE |{ lv_char_filter_where } AND charcvaluedescription = '{ lv_chardesc_sql }'| ).
+            THEN |characteristicdescription = '{ lv_chardesc_sql }'|
+            ELSE |{ lv_char_filter_where } AND characteristicdescription = '{ lv_chardesc_sql }'| ).
       ENDIF.
 
-      SELECT DISTINCT clfnobjectid
-        FROM /bitmym/i_classification
+      SELECT DISTINCT classobjectid
+        FROM /bitmym/c_assort_characteristc
         WHERE (lv_char_filter_where)
         INTO TABLE @lt_char_nodeids.
 
@@ -898,7 +896,7 @@ CLASS /BITMYM/CL_PRODUCT_CATALOG_QP IMPLEMENTATION.
         ENDIF.
 
         lv_field_clause =
-          |NODEID IN ( SELECT CLFNOBJECTID FROM /BITMYM/I_Classification |
+          |NODEID IN ( SELECT CLASSOBJECTID FROM /BITMYM/C_ASSORT_CHARACTERISTC |
           && |WHERE ( { lv_field_clause } ) )|.
       ELSE.
         LOOP AT ls_name_range-range INTO DATA(ls_range).
@@ -957,10 +955,10 @@ CLASS /BITMYM/CL_PRODUCT_CATALOG_QP IMPLEMENTATION.
 
       DATA(lv_search_clause) =
         |( UPPER( NODETEXT ) LIKE '%{ lv_search }%' |
-        && |OR NODEID IN ( SELECT CLFNOBJECTID |
-        && |               FROM /BITMYM/I_Classification |
-        && |              WHERE CONTAINS( VALUECHAR, '{ lv_search }' ) |
-        && |                 OR UPPER( VALUECHAR ) LIKE '%{ lv_search }%' ) )|.
+        && |OR NODEID IN ( SELECT CLASSOBJECTID |
+        && |               FROM /BITMYM/C_ASSORT_CHARACTERISTC |
+        && |              WHERE CONTAINS( CHARVALUE, '{ lv_search }' ) |
+        && |                 OR UPPER( CHARVALUE ) LIKE '%{ lv_search }%' ) )|.
 
       IF rv_where IS INITIAL.
         rv_where = lv_search_clause.
@@ -1103,7 +1101,7 @@ CLASS /BITMYM/CL_PRODUCT_CATALOG_QP IMPLEMENTATION.
     DATA lr_data TYPE REF TO data.
     FIELD-SYMBOLS <ls_comp> LIKE LINE OF lt_comp.
 
-    CREATE DATA lr_data TYPE /bitmym/i_classification.
+    CREATE DATA lr_data TYPE /bitmym/c_assort_characteristc.
     lo_struct ?= cl_abap_typedescr=>describe_by_data_ref( lr_data ).
     lt_comp = lo_struct->get_components( ).
 
