@@ -100,6 +100,12 @@ CLASS /BITMYM/CL_PRODUCT_CATALOG_QP DEFINITION
       RETURNING
         VALUE(rt_name_ranges) TYPE if_rap_query_filter=>tt_name_range_pairs.
 
+    METHODS get_charvalue_filter_value
+      IMPORTING
+        io_filter           TYPE REF TO if_rap_query_filter
+      RETURNING
+        VALUE(rv_charvalue) TYPE string.
+
     METHODS determine_requested_expands
       IMPORTING
         io_request      TYPE REF TO if_rap_query_request
@@ -124,6 +130,7 @@ CLASS /BITMYM/CL_PRODUCT_CATALOG_QP DEFINITION
         iv_where       TYPE string
         iv_orderby     TYPE string
         iv_fetch_rows  TYPE i
+        iv_charvalue   TYPE string
       CHANGING
         ct_data        TYPE tty_product_catalog.
 
@@ -141,6 +148,7 @@ CLASS /BITMYM/CL_PRODUCT_CATALOG_QP DEFINITION
         iv_root_node        TYPE /bitmym/i_product_catalog_hry-nodeid
         iv_max_depth        TYPE i
         iv_where            TYPE string
+        iv_charvalue        TYPE string
       RETURNING
         VALUE(rv_count)     TYPE int8.
 
@@ -183,7 +191,8 @@ CLASS /BITMYM/CL_PRODUCT_CATALOG_QP IMPLEMENTATION.
       lv_expand_char     TYPE abap_bool,
       lv_expand_child    TYPE abap_bool,
       lv_has_paging      TYPE abap_bool,
-      lv_fetch_rows      TYPE i.
+      lv_fetch_rows      TYPE i,
+      lv_charvalue       TYPE string.
 
     lv_data_requested = io_request->is_data_requested( ).
     lv_count_requested = io_request->is_total_numb_of_rec_requested( ).
@@ -209,6 +218,16 @@ CLASS /BITMYM/CL_PRODUCT_CATALOG_QP IMPLEMENTATION.
       io_filter            = lo_filter
       iv_search_expression = io_request->get_search_expression( ) ).
     lv_orderby = get_orderby_clause( io_request->get_sort_elements( ) ).
+    CLEAR lv_charvalue.
+    DATA(lt_filter_ranges) = get_filter_ranges( lo_filter ).
+    READ TABLE lt_filter_ranges INTO DATA(ls_charvalue_filter)
+      WITH KEY name = 'CHARVALUE'.
+    IF sy-subrc = 0 AND ls_charvalue_filter-range IS NOT INITIAL.
+      READ TABLE ls_charvalue_filter-range INTO DATA(ls_charvalue_range) INDEX 1.
+      IF sy-subrc = 0 AND ls_charvalue_range-low IS NOT INITIAL.
+        lv_charvalue = CONV string( ls_charvalue_range-low ).
+      ENDIF.
+    ENDIF.
 
     determine_requested_expands(
       EXPORTING
@@ -239,6 +258,7 @@ CLASS /BITMYM/CL_PRODUCT_CATALOG_QP IMPLEMENTATION.
         iv_where       = lv_where
         iv_orderby     = lv_orderby
         iv_fetch_rows  = lv_fetch_rows
+        iv_charvalue   = lv_charvalue
       CHANGING
         ct_data        = lt_data ).
 
@@ -255,7 +275,8 @@ CLASS /BITMYM/CL_PRODUCT_CATALOG_QP IMPLEMENTATION.
         iv_from_syntax = lv_from_syntax
         iv_root_node   = lv_root_node
         iv_max_depth   = lv_max_depth
-        iv_where       = lv_where ).
+        iv_where       = lv_where
+        iv_charvalue   = lv_charvalue ).
       io_response->set_total_number_of_records( lv_count ).
     ENDIF.
 
@@ -315,43 +336,98 @@ CLASS /BITMYM/CL_PRODUCT_CATALOG_QP IMPLEMENTATION.
     CLEAR ct_data.
 
     DATA(lv_has_row_limit) = xsdbool( iv_fetch_rows > 0 ).
-
     IF gv_source_cds = gc_source_product_hry.
       IF iv_where IS INITIAL.
-        IF lv_has_row_limit = abap_true.
-          SELECT (iv_select_list)
-            FROM /bitmym/i_product_catalog_hry(
-                   p_root_node = @iv_root_node,
-                   p_max_depth = @iv_max_depth )
-            ORDER BY (iv_orderby)
-            INTO CORRESPONDING FIELDS OF TABLE @ct_data
-            UP TO @iv_fetch_rows ROWS.
+        IF iv_charvalue IS INITIAL.
+          IF lv_has_row_limit = abap_true.
+            SELECT (iv_select_list)
+              FROM /bitmym/i_product_catalog_hry(
+                     p_root_node = @iv_root_node,
+                     p_max_depth = @iv_max_depth )
+              ORDER BY (iv_orderby)
+              INTO CORRESPONDING FIELDS OF TABLE @ct_data
+              UP TO @iv_fetch_rows ROWS.
+          ELSE.
+            SELECT (iv_select_list)
+              FROM /bitmym/i_product_catalog_hry(
+                     p_root_node = @iv_root_node,
+                     p_max_depth = @iv_max_depth )
+              ORDER BY (iv_orderby)
+              INTO CORRESPONDING FIELDS OF TABLE @ct_data.
+          ENDIF.
         ELSE.
-          SELECT (iv_select_list)
-            FROM /bitmym/i_product_catalog_hry(
-                   p_root_node = @iv_root_node,
-                   p_max_depth = @iv_max_depth )
-            ORDER BY (iv_orderby)
-            INTO CORRESPONDING FIELDS OF TABLE @ct_data.
+          IF lv_has_row_limit = abap_true.
+            SELECT DISTINCT (iv_select_list)
+              FROM /bitmym/i_product_catalog_hry(
+                     p_root_node = @iv_root_node,
+                     p_max_depth = @iv_max_depth )
+              WHERE EXISTS ( SELECT 1
+                               FROM /bitmym/i_classification
+                              WHERE clfnobjectid = nodeid
+                                AND charvalue = @iv_charvalue )
+              ORDER BY (iv_orderby)
+              INTO CORRESPONDING FIELDS OF TABLE @ct_data
+              UP TO @iv_fetch_rows ROWS.
+          ELSE.
+            SELECT DISTINCT (iv_select_list)
+              FROM /bitmym/i_product_catalog_hry(
+                     p_root_node = @iv_root_node,
+                     p_max_depth = @iv_max_depth )
+              WHERE EXISTS ( SELECT 1
+                               FROM /bitmym/i_classification
+                              WHERE clfnobjectid = nodeid
+                                AND charvalue = @iv_charvalue )
+              ORDER BY (iv_orderby)
+              INTO CORRESPONDING FIELDS OF TABLE @ct_data.
+          ENDIF.
         ENDIF.
       ELSE.
-        IF lv_has_row_limit = abap_true.
-          SELECT DISTINCT (iv_select_list)
-            FROM /bitmym/i_product_catalog_hry(
-                   p_root_node = @iv_root_node,
-                   p_max_depth = @iv_max_depth )
-            WHERE (iv_where)
-            ORDER BY (iv_orderby)
-            INTO CORRESPONDING FIELDS OF TABLE @ct_data
-            UP TO @iv_fetch_rows ROWS.
+        IF iv_charvalue IS INITIAL.
+          IF lv_has_row_limit = abap_true.
+            SELECT DISTINCT (iv_select_list)
+              FROM /bitmym/i_product_catalog_hry(
+                     p_root_node = @iv_root_node,
+                     p_max_depth = @iv_max_depth )
+              WHERE (iv_where)
+              ORDER BY (iv_orderby)
+              INTO CORRESPONDING FIELDS OF TABLE @ct_data
+              UP TO @iv_fetch_rows ROWS.
+          ELSE.
+            SELECT DISTINCT (iv_select_list)
+              FROM /bitmym/i_product_catalog_hry(
+                     p_root_node = @iv_root_node,
+                     p_max_depth = @iv_max_depth )
+              WHERE (iv_where)
+              ORDER BY (iv_orderby)
+              INTO CORRESPONDING FIELDS OF TABLE @ct_data.
+          ENDIF.
         ELSE.
-          SELECT DISTINCT (iv_select_list)
-            FROM /bitmym/i_product_catalog_hry(
-                   p_root_node = @iv_root_node,
-                   p_max_depth = @iv_max_depth )
-            WHERE (iv_where)
-            ORDER BY (iv_orderby)
-            INTO CORRESPONDING FIELDS OF TABLE @ct_data.
+          IF lv_has_row_limit = abap_true.
+            SELECT DISTINCT (iv_select_list)
+              FROM /bitmym/i_product_catalog_hry(
+                     p_root_node = @iv_root_node,
+                     p_max_depth = @iv_max_depth )
+              WHERE (iv_where)
+                AND EXISTS ( SELECT 1
+                               FROM /bitmym/i_classification
+                              WHERE clfnobjectid = nodeid
+                                AND charvalue = @iv_charvalue )
+              ORDER BY (iv_orderby)
+              INTO CORRESPONDING FIELDS OF TABLE @ct_data
+              UP TO @iv_fetch_rows ROWS.
+          ELSE.
+            SELECT DISTINCT (iv_select_list)
+              FROM /bitmym/i_product_catalog_hry(
+                     p_root_node = @iv_root_node,
+                     p_max_depth = @iv_max_depth )
+              WHERE (iv_where)
+                AND EXISTS ( SELECT 1
+                               FROM /bitmym/i_classification
+                              WHERE clfnobjectid = nodeid
+                                AND charvalue = @iv_charvalue )
+              ORDER BY (iv_orderby)
+              INTO CORRESPONDING FIELDS OF TABLE @ct_data.
+          ENDIF.
         ENDIF.
       ENDIF.
       RETURN.
