@@ -737,23 +737,23 @@ CLASS /BITMYM/CL_PRODUCT_CATALOG_QP IMPLEMENTATION.
 
           CASE ls_char_range-option.
             WHEN 'EQ'.
-              lv_char_cond = |c~{ lv_char_field } = '{ lv_char_low }'|.
+              lv_char_cond = |{ lv_char_field } = '{ lv_char_low }'|.
             WHEN 'NE'.
-              lv_char_cond = |c~{ lv_char_field } <> '{ lv_char_low }'|.
+              lv_char_cond = |{ lv_char_field } <> '{ lv_char_low }'|.
             WHEN 'GE'.
-              lv_char_cond = |c~{ lv_char_field } >= '{ lv_char_low }'|.
+              lv_char_cond = |{ lv_char_field } >= '{ lv_char_low }'|.
             WHEN 'LE'.
-              lv_char_cond = |c~{ lv_char_field } <= '{ lv_char_low }'|.
+              lv_char_cond = |{ lv_char_field } <= '{ lv_char_low }'|.
             WHEN 'GT'.
-              lv_char_cond = |c~{ lv_char_field } > '{ lv_char_low }'|.
+              lv_char_cond = |{ lv_char_field } > '{ lv_char_low }'|.
             WHEN 'LT'.
-              lv_char_cond = |c~{ lv_char_field } < '{ lv_char_low }'|.
+              lv_char_cond = |{ lv_char_field } < '{ lv_char_low }'|.
             WHEN 'BT'.
-              lv_char_cond = |c~{ lv_char_field } BETWEEN '{ lv_char_low }' AND '{ lv_char_high }'|.
+              lv_char_cond = |{ lv_char_field } BETWEEN '{ lv_char_low }' AND '{ lv_char_high }'|.
             WHEN 'CP'.
               DATA(lv_char_pattern) = lv_char_low.
               REPLACE ALL OCCURRENCES OF '*' IN lv_char_pattern WITH '%'.
-              lv_char_cond = |c~{ lv_char_field } LIKE '{ lv_char_pattern }'|.
+              lv_char_cond = |{ lv_char_field } LIKE '{ lv_char_pattern }'|.
             WHEN OTHERS.
               CONTINUE.
           ENDCASE.
@@ -775,8 +775,8 @@ CLASS /BITMYM/CL_PRODUCT_CATALOG_QP IMPLEMENTATION.
         ENDIF.
 
         lv_field_clause =
-          |EXISTS ( SELECT 1 FROM /BITMYM/I_Classification AS c |
-          && |WHERE c~ClfnObjectID = nodeid AND ( { lv_field_clause } ) )|.
+          |EXISTS ( SELECT 1 FROM /BITMYM/I_Classification |
+          && |WHERE ClfnObjectID = nodeid AND ( { lv_field_clause } ) )|.
       ELSE.
         LOOP AT ls_name_range-range INTO DATA(ls_range).
           DATA(lv_cond) = ``.
@@ -835,10 +835,10 @@ CLASS /BITMYM/CL_PRODUCT_CATALOG_QP IMPLEMENTATION.
       DATA(lv_search_clause) =
         |( UPPER( NODETEXT ) LIKE '%{ lv_search }%' |
         && |OR EXISTS ( SELECT 1 |
-        && |FROM /BITMYM/I_Classification AS c |
-        && |WHERE c~ClfnObjectID = nodeid |
-        && |  AND ( CONTAINS( c~CHARVALUE, '{ lv_search }' ) |
-        && |     OR UPPER( c~CHARVALUE ) LIKE '%{ lv_search }%' ) ) )|.
+        && |FROM /BITMYM/I_Classification |
+        && |WHERE ClfnObjectID = nodeid |
+        && |  AND ( CONTAINS( CHARVALUE, '{ lv_search }' ) |
+        && |     OR UPPER( CHARVALUE ) LIKE '%{ lv_search }%' ) ) )|.
 
       IF rv_where IS INITIAL.
         rv_where = lv_search_clause.
