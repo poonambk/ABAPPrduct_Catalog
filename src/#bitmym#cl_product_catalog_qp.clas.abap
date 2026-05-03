@@ -103,12 +103,6 @@ CLASS /BITMYM/CL_PRODUCT_CATALOG_QP DEFINITION
       RETURNING
         VALUE(rt_name_ranges) TYPE if_rap_query_filter=>tt_name_range_pairs.
 
-    METHODS get_charvalue_filter_value
-      IMPORTING
-        io_filter           TYPE REF TO if_rap_query_filter
-      RETURNING
-        VALUE(rv_charvalue) TYPE string.
-
     METHODS determine_requested_expands
       IMPORTING
         io_request      TYPE REF TO if_rap_query_request
@@ -134,6 +128,8 @@ CLASS /BITMYM/CL_PRODUCT_CATALOG_QP DEFINITION
         iv_orderby     TYPE string
         iv_fetch_rows  TYPE i
         iv_charvalue   TYPE string
+        iv_charid      TYPE string
+        iv_chardescription TYPE string
       CHANGING
         ct_data        TYPE tty_product_catalog.
 
@@ -152,6 +148,8 @@ CLASS /BITMYM/CL_PRODUCT_CATALOG_QP DEFINITION
         iv_max_depth        TYPE i
         iv_where            TYPE string
         iv_charvalue        TYPE string
+        iv_charid           TYPE string
+        iv_chardescription  TYPE string
       RETURNING
         VALUE(rv_count)     TYPE int8.
 
@@ -195,7 +193,9 @@ CLASS /BITMYM/CL_PRODUCT_CATALOG_QP IMPLEMENTATION.
       lv_expand_child    TYPE abap_bool,
       lv_has_paging      TYPE abap_bool,
       lv_fetch_rows      TYPE i,
-      lv_charvalue       TYPE string.
+      lv_charvalue       TYPE string,
+      lv_charid          TYPE string,
+      lv_chardescription TYPE string.
 
     lv_data_requested = io_request->is_data_requested( ).
     lv_count_requested = io_request->is_total_numb_of_rec_requested( ).
@@ -221,16 +221,24 @@ CLASS /BITMYM/CL_PRODUCT_CATALOG_QP IMPLEMENTATION.
       io_filter            = lo_filter
       iv_search_expression = io_request->get_search_expression( ) ).
     lv_orderby = get_orderby_clause( io_request->get_sort_elements( ) ).
-    CLEAR lv_charvalue.
+    CLEAR: lv_charvalue, lv_charid, lv_chardescription.
     DATA(lt_filter_ranges) = get_filter_ranges( lo_filter ).
-    READ TABLE lt_filter_ranges INTO DATA(ls_charvalue_filter)
-      WITH KEY name = 'CHARVALUE'.
-    IF sy-subrc = 0 AND ls_charvalue_filter-range IS NOT INITIAL.
-      READ TABLE ls_charvalue_filter-range INTO DATA(ls_charvalue_range) INDEX 1.
-      IF sy-subrc = 0 AND ls_charvalue_range-low IS NOT INITIAL.
-        lv_charvalue = CONV string( ls_charvalue_range-low ).
+    LOOP AT lt_filter_ranges INTO DATA(ls_filter_range)
+         WHERE range IS NOT INITIAL.
+      READ TABLE ls_filter_range-range INTO DATA(ls_filter_value) INDEX 1.
+      IF sy-subrc <> 0 OR ls_filter_value-low IS INITIAL.
+        CONTINUE.
       ENDIF.
-    ENDIF.
+
+      CASE to_upper( ls_filter_range-name ).
+        WHEN 'CHARVALUE'.
+          lv_charvalue = CONV string( ls_filter_value-low ).
+        WHEN 'CHARID'.
+          lv_charid = CONV string( ls_filter_value-low ).
+        WHEN 'CHARDESCRIPTION'.
+          lv_chardescription = CONV string( ls_filter_value-low ).
+      ENDCASE.
+    ENDLOOP.
 
     determine_requested_expands(
       EXPORTING
@@ -262,6 +270,8 @@ CLASS /BITMYM/CL_PRODUCT_CATALOG_QP IMPLEMENTATION.
         iv_orderby     = lv_orderby
         iv_fetch_rows  = lv_fetch_rows
         iv_charvalue   = lv_charvalue
+        iv_charid      = lv_charid
+        iv_chardescription = lv_chardescription
       CHANGING
         ct_data        = lt_data ).
 
@@ -279,7 +289,9 @@ CLASS /BITMYM/CL_PRODUCT_CATALOG_QP IMPLEMENTATION.
         iv_root_node   = lv_root_node
         iv_max_depth   = lv_max_depth
         iv_where       = lv_where
-        iv_charvalue   = lv_charvalue ).
+        iv_charvalue   = lv_charvalue
+        iv_charid      = lv_charid
+        iv_chardescription = lv_chardescription ).
       io_response->set_total_number_of_records( lv_count ).
     ENDIF.
 
@@ -339,9 +351,13 @@ CLASS /BITMYM/CL_PRODUCT_CATALOG_QP IMPLEMENTATION.
     CLEAR ct_data.
 
     DATA(lv_has_row_limit) = xsdbool( iv_fetch_rows > 0 ).
+    DATA(lv_has_char_filter) = xsdbool(
+      iv_charvalue IS NOT INITIAL
+      OR iv_charid IS NOT INITIAL
+      OR iv_chardescription IS NOT INITIAL ).
     IF gv_source_cds = gc_source_product_hry.
       IF iv_where IS INITIAL.
-        IF iv_charvalue IS INITIAL.
+        IF lv_has_char_filter = abap_false.
           IF lv_has_row_limit = abap_true.
             SELECT (iv_select_list)
               FROM /bitmym/i_product_catalog_hry(
@@ -367,7 +383,9 @@ CLASS /BITMYM/CL_PRODUCT_CATALOG_QP IMPLEMENTATION.
               WHERE EXISTS ( SELECT 1
                                FROM /bitmym/i_classification
                               WHERE clfnobjectid = nodeid
-                                AND charvalue = @iv_charvalue )
+                                AND ( @iv_charvalue IS INITIAL OR charvalue = @iv_charvalue )
+                                AND ( @iv_charid IS INITIAL OR charid = @iv_charid )
+                                AND ( @iv_chardescription IS INITIAL OR chardescription = @iv_chardescription ) )
               ORDER BY (iv_orderby)
               INTO CORRESPONDING FIELDS OF TABLE @ct_data
               UP TO @iv_fetch_rows ROWS.
@@ -379,13 +397,15 @@ CLASS /BITMYM/CL_PRODUCT_CATALOG_QP IMPLEMENTATION.
               WHERE EXISTS ( SELECT 1
                                FROM /bitmym/i_classification
                               WHERE clfnobjectid = nodeid
-                                AND charvalue = @iv_charvalue )
+                                AND ( @iv_charvalue IS INITIAL OR charvalue = @iv_charvalue )
+                                AND ( @iv_charid IS INITIAL OR charid = @iv_charid )
+                                AND ( @iv_chardescription IS INITIAL OR chardescription = @iv_chardescription ) )
               ORDER BY (iv_orderby)
               INTO CORRESPONDING FIELDS OF TABLE @ct_data.
           ENDIF.
         ENDIF.
       ELSE.
-        IF iv_charvalue IS INITIAL.
+        IF lv_has_char_filter = abap_false.
           IF lv_has_row_limit = abap_true.
             SELECT DISTINCT (iv_select_list)
               FROM /bitmym/i_product_catalog_hry(
@@ -414,7 +434,9 @@ CLASS /BITMYM/CL_PRODUCT_CATALOG_QP IMPLEMENTATION.
                 AND EXISTS ( SELECT 1
                                FROM /bitmym/i_classification
                               WHERE clfnobjectid = nodeid
-                                AND charvalue = @iv_charvalue )
+                                AND ( @iv_charvalue IS INITIAL OR charvalue = @iv_charvalue )
+                                AND ( @iv_charid IS INITIAL OR charid = @iv_charid )
+                                AND ( @iv_chardescription IS INITIAL OR chardescription = @iv_chardescription ) )
               ORDER BY (iv_orderby)
               INTO CORRESPONDING FIELDS OF TABLE @ct_data
               UP TO @iv_fetch_rows ROWS.
@@ -427,7 +449,9 @@ CLASS /BITMYM/CL_PRODUCT_CATALOG_QP IMPLEMENTATION.
                 AND EXISTS ( SELECT 1
                                FROM /bitmym/i_classification
                               WHERE clfnobjectid = nodeid
-                                AND charvalue = @iv_charvalue )
+                                AND ( @iv_charvalue IS INITIAL OR charvalue = @iv_charvalue )
+                                AND ( @iv_charid IS INITIAL OR charid = @iv_charid )
+                                AND ( @iv_chardescription IS INITIAL OR chardescription = @iv_chardescription ) )
               ORDER BY (iv_orderby)
               INTO CORRESPONDING FIELDS OF TABLE @ct_data.
           ENDIF.
@@ -576,20 +600,54 @@ CLASS /BITMYM/CL_PRODUCT_CATALOG_QP IMPLEMENTATION.
 
 
   METHOD get_total_count.
+    DATA(lv_has_char_filter) = xsdbool(
+      iv_charvalue IS NOT INITIAL
+      OR iv_charid IS NOT INITIAL
+      OR iv_chardescription IS NOT INITIAL ).
+
     IF gv_source_cds = gc_source_product_hry.
       IF iv_where IS INITIAL.
-        SELECT COUNT( * )
-          FROM /bitmym/i_product_catalog_hry(
-                 p_root_node = @iv_root_node,
-                 p_max_depth = @iv_max_depth )
-          INTO @rv_count.
+        IF lv_has_char_filter = abap_false.
+          SELECT COUNT( * )
+            FROM /bitmym/i_product_catalog_hry(
+                   p_root_node = @iv_root_node,
+                   p_max_depth = @iv_max_depth )
+            INTO @rv_count.
+        ELSE.
+          SELECT COUNT( * )
+            FROM /bitmym/i_product_catalog_hry(
+                   p_root_node = @iv_root_node,
+                   p_max_depth = @iv_max_depth )
+            WHERE EXISTS ( SELECT 1
+                             FROM /bitmym/i_classification
+                            WHERE clfnobjectid = nodeid
+                              AND ( @iv_charvalue IS INITIAL OR charvalue = @iv_charvalue )
+                              AND ( @iv_charid IS INITIAL OR charid = @iv_charid )
+                              AND ( @iv_chardescription IS INITIAL OR chardescription = @iv_chardescription ) )
+            INTO @rv_count.
+        ENDIF.
       ELSE.
-        SELECT COUNT( * )
-          FROM /bitmym/i_product_catalog_hry(
-                 p_root_node = @iv_root_node,
-                 p_max_depth = @iv_max_depth )
-          WHERE (iv_where)
-          INTO @rv_count.
+        IF lv_has_char_filter = abap_false.
+          SELECT COUNT( * )
+            FROM /bitmym/i_product_catalog_hry(
+                   p_root_node = @iv_root_node,
+                   p_max_depth = @iv_max_depth )
+            WHERE (iv_where)
+            INTO @rv_count.
+        ELSE.
+          SELECT COUNT( * )
+            FROM /bitmym/i_product_catalog_hry(
+                   p_root_node = @iv_root_node,
+                   p_max_depth = @iv_max_depth )
+            WHERE (iv_where)
+              AND EXISTS ( SELECT 1
+                             FROM /bitmym/i_classification
+                            WHERE clfnobjectid = nodeid
+                              AND ( @iv_charvalue IS INITIAL OR charvalue = @iv_charvalue )
+                              AND ( @iv_charid IS INITIAL OR charid = @iv_charid )
+                              AND ( @iv_chardescription IS INITIAL OR chardescription = @iv_chardescription ) )
+            INTO @rv_count.
+        ENDIF.
       ENDIF.
       RETURN.
     ENDIF.
