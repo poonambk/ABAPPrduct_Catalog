@@ -441,14 +441,14 @@ CLASS /BITMYM/CL_PRODUCT_CATALOG_QP IMPLEMENTATION.
       ENDIF.
     ELSE.
       IF lv_has_row_limit = abap_true.
-        SELECT DISTINCT (iv_select_list)
+        SELECT (iv_select_list)
           FROM (iv_from_syntax)
           WHERE (lv_effective_where)
           ORDER BY (iv_orderby)
           INTO CORRESPONDING FIELDS OF TABLE @ct_data
           UP TO @iv_fetch_rows ROWS.
       ELSE.
-        SELECT DISTINCT (iv_select_list)
+        SELECT (iv_select_list)
           FROM (iv_from_syntax)
           WHERE (lv_effective_where)
           ORDER BY (iv_orderby)
