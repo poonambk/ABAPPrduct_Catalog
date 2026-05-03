@@ -355,7 +355,7 @@ CLASS /BITMYM/CL_PRODUCT_CATALOG_QP IMPLEMENTATION.
        OR iv_charid IS NOT INITIAL
        OR iv_chardescription IS NOT INITIAL.
       lv_char_exists = |EXISTS ( SELECT 1 FROM /BITMYM/I_Classification |
-                    && |WHERE ClfnObjectID = nodeid|.
+                    && |WHERE ClfnObjectID = src~nodeid|.
 
       IF iv_charvalue IS NOT INITIAL.
         DATA(lv_charvalue_sql) = CONV string( iv_charvalue ).
@@ -389,27 +389,27 @@ CLASS /BITMYM/CL_PRODUCT_CATALOG_QP IMPLEMENTATION.
     IF lv_combined_where IS INITIAL.
       IF lv_has_row_limit = abap_true.
         SELECT (iv_select_list)
-          FROM (iv_from_syntax)
+          FROM (iv_from_syntax) AS src
           ORDER BY (iv_orderby)
           INTO CORRESPONDING FIELDS OF TABLE @ct_data
           UP TO @iv_fetch_rows ROWS.
       ELSE.
         SELECT (iv_select_list)
-          FROM (iv_from_syntax)
+          FROM (iv_from_syntax) AS src
           ORDER BY (iv_orderby)
           INTO CORRESPONDING FIELDS OF TABLE @ct_data.
       ENDIF.
     ELSE.
       IF lv_has_row_limit = abap_true.
         SELECT DISTINCT (iv_select_list)
-          FROM (iv_from_syntax)
+          FROM (iv_from_syntax) AS src
           WHERE (lv_combined_where)
           ORDER BY (iv_orderby)
           INTO CORRESPONDING FIELDS OF TABLE @ct_data
           UP TO @iv_fetch_rows ROWS.
       ELSE.
         SELECT DISTINCT (iv_select_list)
-          FROM (iv_from_syntax)
+          FROM (iv_from_syntax) AS src
           WHERE (lv_combined_where)
           ORDER BY (iv_orderby)
           INTO CORRESPONDING FIELDS OF TABLE @ct_data.
@@ -533,7 +533,7 @@ CLASS /BITMYM/CL_PRODUCT_CATALOG_QP IMPLEMENTATION.
        OR iv_charid IS NOT INITIAL
        OR iv_chardescription IS NOT INITIAL.
       lv_char_exists = |EXISTS ( SELECT 1 FROM /BITMYM/I_Classification |
-                    && |WHERE ClfnObjectID = nodeid|.
+                    && |WHERE ClfnObjectID = src~nodeid|.
 
       IF iv_charvalue IS NOT INITIAL.
         DATA(lv_charvalue_sql) = CONV string( iv_charvalue ).
@@ -566,11 +566,11 @@ CLASS /BITMYM/CL_PRODUCT_CATALOG_QP IMPLEMENTATION.
 
     IF lv_combined_where IS INITIAL.
       SELECT COUNT( * )
-        FROM (iv_from_syntax)
+        FROM (iv_from_syntax) AS src
         INTO @rv_count.
     ELSE.
       SELECT COUNT( * )
-        FROM (iv_from_syntax)
+        FROM (iv_from_syntax) AS src
         WHERE (lv_combined_where)
         INTO @rv_count.
     ENDIF.
@@ -821,7 +821,7 @@ CLASS /BITMYM/CL_PRODUCT_CATALOG_QP IMPLEMENTATION.
 
         lv_field_clause =
           |EXISTS ( SELECT 1 FROM /BITMYM/I_Classification |
-          && |WHERE ClfnObjectID = nodeid AND ( { lv_field_clause } ) )|.
+          && |WHERE ClfnObjectID = src~nodeid AND ( { lv_field_clause } ) )|.
       ELSE.
         LOOP AT ls_name_range-range INTO DATA(ls_range).
           DATA(lv_cond) = ``.
@@ -881,7 +881,7 @@ CLASS /BITMYM/CL_PRODUCT_CATALOG_QP IMPLEMENTATION.
         |( UPPER( NODETEXT ) LIKE '%{ lv_search }%' |
         && |OR EXISTS ( SELECT 1 |
         && |FROM /BITMYM/I_Classification |
-        && |WHERE ClfnObjectID = nodeid |
+        && |WHERE ClfnObjectID = src~nodeid |
         && |  AND ( CONTAINS( CHARVALUE, '{ lv_search }' ) |
         && |     OR UPPER( CHARVALUE ) LIKE '%{ lv_search }%' ) ) )|.
 
