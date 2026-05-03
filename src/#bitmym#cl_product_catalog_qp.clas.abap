@@ -426,8 +426,6 @@ CLASS /BITMYM/CL_PRODUCT_CATALOG_QP IMPLEMENTATION.
     ENDIF.
 
     DATA(lv_effective_where) = lv_combined_where.
-    REPLACE ALL OCCURRENCES OF 'SRC~' IN lv_effective_where WITH ''.
-    REPLACE ALL OCCURRENCES OF 'src~' IN lv_effective_where WITH ''.
 
     IF lv_effective_where IS INITIAL.
       IF lt_char_node_range IS INITIAL.
@@ -625,8 +623,6 @@ CLASS /BITMYM/CL_PRODUCT_CATALOG_QP IMPLEMENTATION.
     ENDIF.
 
     DATA(lv_effective_where) = lv_combined_where.
-    REPLACE ALL OCCURRENCES OF 'SRC~' IN lv_effective_where WITH ''.
-    REPLACE ALL OCCURRENCES OF 'src~' IN lv_effective_where WITH ''.
 
     IF lv_effective_where IS INITIAL.
       IF lt_char_node_range IS INITIAL.
