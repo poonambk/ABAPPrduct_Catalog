@@ -389,7 +389,7 @@ CLASS /BITMYM/CL_PRODUCT_CATALOG_QP IMPLEMENTATION.
       IF iv_charvalue IS NOT INITIAL.
         DATA(lv_charvalue_sql) = CONV string( iv_charvalue ).
         REPLACE ALL OCCURRENCES OF '''' IN lv_charvalue_sql WITH ''''''.
-        lv_char_filter_where = |charvalue = '{ lv_charvalue_sql }'|.
+        lv_char_filter_where = |valuechar = '{ lv_charvalue_sql }'|.
       ENDIF.
 
       IF iv_charid IS NOT INITIAL.
@@ -397,8 +397,8 @@ CLASS /BITMYM/CL_PRODUCT_CATALOG_QP IMPLEMENTATION.
         REPLACE ALL OCCURRENCES OF '''' IN lv_charid_sql WITH ''''''.
         lv_char_filter_where = COND string(
           WHEN lv_char_filter_where IS INITIAL
-            THEN |charid = '{ lv_charid_sql }'|
-            ELSE |{ lv_char_filter_where } AND charid = '{ lv_charid_sql }'| ).
+            THEN |characteristic = '{ lv_charid_sql }'|
+            ELSE |{ lv_char_filter_where } AND characteristic = '{ lv_charid_sql }'| ).
       ENDIF.
 
       IF iv_chardescription IS NOT INITIAL.
@@ -406,8 +406,8 @@ CLASS /BITMYM/CL_PRODUCT_CATALOG_QP IMPLEMENTATION.
         REPLACE ALL OCCURRENCES OF '''' IN lv_chardesc_sql WITH ''''''.
         lv_char_filter_where = COND string(
           WHEN lv_char_filter_where IS INITIAL
-            THEN |chardescription = '{ lv_chardesc_sql }'|
-            ELSE |{ lv_char_filter_where } AND chardescription = '{ lv_chardesc_sql }'| ).
+            THEN |charcvaluedescription = '{ lv_chardesc_sql }'|
+            ELSE |{ lv_char_filter_where } AND charcvaluedescription = '{ lv_chardesc_sql }'| ).
       ENDIF.
 
       SELECT DISTINCT clfnobjectid
@@ -586,7 +586,7 @@ CLASS /BITMYM/CL_PRODUCT_CATALOG_QP IMPLEMENTATION.
       IF iv_charvalue IS NOT INITIAL.
         DATA(lv_charvalue_sql) = CONV string( iv_charvalue ).
         REPLACE ALL OCCURRENCES OF '''' IN lv_charvalue_sql WITH ''''''.
-        lv_char_filter_where = |charvalue = '{ lv_charvalue_sql }'|.
+        lv_char_filter_where = |valuechar = '{ lv_charvalue_sql }'|.
       ENDIF.
 
       IF iv_charid IS NOT INITIAL.
@@ -594,8 +594,8 @@ CLASS /BITMYM/CL_PRODUCT_CATALOG_QP IMPLEMENTATION.
         REPLACE ALL OCCURRENCES OF '''' IN lv_charid_sql WITH ''''''.
         lv_char_filter_where = COND string(
           WHEN lv_char_filter_where IS INITIAL
-            THEN |charid = '{ lv_charid_sql }'|
-            ELSE |{ lv_char_filter_where } AND charid = '{ lv_charid_sql }'| ).
+            THEN |characteristic = '{ lv_charid_sql }'|
+            ELSE |{ lv_char_filter_where } AND characteristic = '{ lv_charid_sql }'| ).
       ENDIF.
 
       IF iv_chardescription IS NOT INITIAL.
@@ -603,8 +603,8 @@ CLASS /BITMYM/CL_PRODUCT_CATALOG_QP IMPLEMENTATION.
         REPLACE ALL OCCURRENCES OF '''' IN lv_chardesc_sql WITH ''''''.
         lv_char_filter_where = COND string(
           WHEN lv_char_filter_where IS INITIAL
-            THEN |chardescription = '{ lv_chardesc_sql }'|
-            ELSE |{ lv_char_filter_where } AND chardescription = '{ lv_chardesc_sql }'| ).
+            THEN |charcvaluedescription = '{ lv_chardesc_sql }'|
+            ELSE |{ lv_char_filter_where } AND charcvaluedescription = '{ lv_chardesc_sql }'| ).
       ENDIF.
 
       SELECT DISTINCT clfnobjectid
@@ -955,8 +955,8 @@ CLASS /BITMYM/CL_PRODUCT_CATALOG_QP IMPLEMENTATION.
         |( UPPER( NODETEXT ) LIKE '%{ lv_search }%' |
         && |OR NODEID IN ( SELECT CLFNOBJECTID |
         && |               FROM /BITMYM/I_Classification |
-        && |              WHERE CONTAINS( CHARVALUE, '{ lv_search }' ) |
-        && |                 OR UPPER( CHARVALUE ) LIKE '%{ lv_search }%' ) )|.
+        && |              WHERE CONTAINS( VALUECHAR, '{ lv_search }' ) |
+        && |                 OR UPPER( VALUECHAR ) LIKE '%{ lv_search }%' ) )|.
 
       IF rv_where IS INITIAL.
         rv_where = lv_search_clause.
