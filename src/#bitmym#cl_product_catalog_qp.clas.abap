@@ -85,7 +85,7 @@ CLASS /BITMYM/CL_PRODUCT_CATALOG_QP DEFINITION
       RETURNING
         VALUE(rv_where)      TYPE string.
 
-    METHODS get_where_and_characteristic_filters
+    METHODS prepare_where_and_char_filters
       IMPORTING
         io_filter           TYPE REF TO if_rap_query_filter
         iv_search_expression TYPE string
@@ -227,7 +227,7 @@ CLASS /BITMYM/CL_PRODUCT_CATALOG_QP IMPLEMENTATION.
       lv_page_size = lo_paging->get_page_size( ).
     ENDIF.
 
-    get_where_and_characteristic_filters(
+    prepare_where_and_char_filters(
       EXPORTING
         io_filter            = lo_filter
         iv_search_expression = io_request->get_search_expression( )
@@ -317,7 +317,7 @@ CLASS /BITMYM/CL_PRODUCT_CATALOG_QP IMPLEMENTATION.
   ENDMETHOD.
 
 
-  METHOD get_where_and_characteristic_filters.
+  METHOD prepare_where_and_char_filters.
     ev_where = get_where_clause(
       io_filter            = io_filter
       iv_search_expression = iv_search_expression ).
