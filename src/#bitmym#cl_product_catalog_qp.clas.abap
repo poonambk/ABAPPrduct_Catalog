@@ -662,10 +662,6 @@ CLASS /BITMYM/CL_PRODUCT_CATALOG_QP IMPLEMENTATION.
       ENDIF.
     ENDIF.
 
-    IF gv_source_cds = gc_source_product_hry.
-      RETURN.
-    ENDIF.
-
     DATA(go_ui5) = NEW /bitmym/cl_ui5(
       id_rap_framework = abap_true ).
     CHECK go_ui5 IS BOUND.
@@ -686,10 +682,10 @@ CLASS /BITMYM/CL_PRODUCT_CATALOG_QP IMPLEMENTATION.
     ld_class_type = ls_area-klart_search.
     ld_class_num = ls_area-class_search.
 
-    SELECT SINGLE ClassInternalID
-      FROM I_ClassHeader
-      WHERE Class     = @ld_class_num
-        AND ClassType = @ld_class_type
+    SELECT SINGLE classinternalid
+      FROM i_classheader
+      WHERE class     = @ld_class_num
+        AND classtype = @ld_class_type
       INTO @DATA(lv_nodeid).
 
     IF sy-subrc = 0 AND lv_nodeid IS NOT INITIAL.
