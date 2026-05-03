@@ -85,6 +85,16 @@ CLASS /BITMYM/CL_PRODUCT_CATALOG_QP DEFINITION
       RETURNING
         VALUE(rv_where)      TYPE string.
 
+    METHODS get_where_and_characteristic_filters
+      IMPORTING
+        io_filter           TYPE REF TO if_rap_query_filter
+        iv_search_expression TYPE string
+      EXPORTING
+        ev_where            TYPE string
+        ev_charvalue        TYPE string
+        ev_charid           TYPE string
+        ev_chardescription  TYPE string.
+
     METHODS get_select_list_from_request
       IMPORTING
         io_request            TYPE REF TO if_rap_query_request
@@ -217,28 +227,16 @@ CLASS /BITMYM/CL_PRODUCT_CATALOG_QP IMPLEMENTATION.
       lv_page_size = lo_paging->get_page_size( ).
     ENDIF.
 
-    lv_where = get_where_clause(
-      io_filter            = lo_filter
-      iv_search_expression = io_request->get_search_expression( ) ).
+    get_where_and_characteristic_filters(
+      EXPORTING
+        io_filter            = lo_filter
+        iv_search_expression = io_request->get_search_expression( )
+      IMPORTING
+        ev_where            = lv_where
+        ev_charvalue        = lv_charvalue
+        ev_charid           = lv_charid
+        ev_chardescription  = lv_chardescription ).
     lv_orderby = get_orderby_clause( io_request->get_sort_elements( ) ).
-    CLEAR: lv_charvalue, lv_charid, lv_chardescription.
-    DATA(lt_filter_ranges) = get_filter_ranges( lo_filter ).
-    LOOP AT lt_filter_ranges INTO DATA(ls_filter_range)
-         WHERE range IS NOT INITIAL.
-      READ TABLE ls_filter_range-range INTO DATA(ls_filter_value) INDEX 1.
-      IF sy-subrc <> 0 OR ls_filter_value-low IS INITIAL.
-        CONTINUE.
-      ENDIF.
-
-      CASE to_upper( ls_filter_range-name ).
-        WHEN 'CHARVALUE'.
-          lv_charvalue = CONV string( ls_filter_value-low ).
-        WHEN 'CHARID'.
-          lv_charid = CONV string( ls_filter_value-low ).
-        WHEN 'CHARDESCRIPTION'.
-          lv_chardescription = CONV string( ls_filter_value-low ).
-      ENDCASE.
-    ENDLOOP.
 
     determine_requested_expands(
       EXPORTING
@@ -316,6 +314,32 @@ CLASS /BITMYM/CL_PRODUCT_CATALOG_QP IMPLEMENTATION.
       CATCH cx_root.
         CLEAR rt_name_ranges.
     ENDTRY.
+  ENDMETHOD.
+
+
+  METHOD get_where_and_characteristic_filters.
+    ev_where = get_where_clause(
+      io_filter            = io_filter
+      iv_search_expression = iv_search_expression ).
+    CLEAR: ev_charvalue, ev_charid, ev_chardescription.
+
+    DATA(lt_filter_ranges) = get_filter_ranges( io_filter ).
+    LOOP AT lt_filter_ranges INTO DATA(ls_filter_range)
+         WHERE range IS NOT INITIAL.
+      READ TABLE ls_filter_range-range INTO DATA(ls_filter_value) INDEX 1.
+      IF sy-subrc <> 0 OR ls_filter_value-low IS INITIAL.
+        CONTINUE.
+      ENDIF.
+
+      CASE to_upper( ls_filter_range-name ).
+        WHEN 'CHARVALUE'.
+          ev_charvalue = CONV string( ls_filter_value-low ).
+        WHEN 'CHARID'.
+          ev_charid = CONV string( ls_filter_value-low ).
+        WHEN 'CHARDESCRIPTION'.
+          ev_chardescription = CONV string( ls_filter_value-low ).
+      ENDCASE.
+    ENDLOOP.
   ENDMETHOD.
 
 
