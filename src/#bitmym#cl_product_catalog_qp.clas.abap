@@ -376,49 +376,29 @@ CLASS /BITMYM/CL_PRODUCT_CATALOG_QP IMPLEMENTATION.
     DATA(lv_has_char_where) = xsdbool(
       lv_where_upper CS 'NODEID IN ( SELECT CLFNOBJECTID FROM /BITMYM/I_CLASSIFICATION'
       OR lv_where_upper CS 'EXISTS ( SELECT 1 FROM /BITMYM/I_CLASSIFICATION' ).
-    DATA(lv_char_exists) = CONV string( `` ).
-    DATA(lv_char_predicates) = CONV string( `` ).
+    DATA(lv_apply_char_filter) = xsdbool(
+      lv_has_char_where = abap_false
+      AND ( iv_charvalue IS NOT INITIAL
+         OR iv_charid IS NOT INITIAL
+         OR iv_chardescription IS NOT INITIAL ) ).
+    DATA lt_char_nodeids TYPE STANDARD TABLE OF /bitmym/i_classification-clfnobjectid WITH EMPTY KEY.
+    DATA lt_char_node_range TYPE RANGE OF /bitmym/i_product_catalog_hry-nodeid.
 
-    IF lv_has_char_where = abap_false
-       AND ( iv_charvalue IS NOT INITIAL
-          OR iv_charid IS NOT INITIAL
-          OR iv_chardescription IS NOT INITIAL ).
-      IF iv_charvalue IS NOT INITIAL.
-        DATA(lv_charvalue_sql) = CONV string( iv_charvalue ).
-        REPLACE ALL OCCURRENCES OF '''' IN lv_charvalue_sql WITH ''''''.
-        lv_char_predicates = |charvalue = '{ lv_charvalue_sql }'|.
+    IF lv_apply_char_filter = abap_true.
+      SELECT DISTINCT clfnobjectid
+        FROM /bitmym/i_classification
+        WHERE ( @iv_charvalue IS INITIAL OR charvalue = @iv_charvalue )
+          AND ( @iv_charid IS INITIAL OR charid = @iv_charid )
+          AND ( @iv_chardescription IS INITIAL OR chardescription = @iv_chardescription )
+        INTO TABLE @lt_char_nodeids.
+
+      IF lt_char_nodeids IS INITIAL.
+        RETURN.
       ENDIF.
 
-      IF iv_charid IS NOT INITIAL.
-        DATA(lv_charid_sql) = CONV string( iv_charid ).
-        REPLACE ALL OCCURRENCES OF '''' IN lv_charid_sql WITH ''''''.
-        lv_char_predicates = COND string(
-          WHEN lv_char_predicates IS INITIAL
-            THEN |charid = '{ lv_charid_sql }'|
-            ELSE |{ lv_char_predicates } AND charid = '{ lv_charid_sql }'| ).
-      ENDIF.
-
-      IF iv_chardescription IS NOT INITIAL.
-        DATA(lv_chardesc_sql) = CONV string( iv_chardescription ).
-        REPLACE ALL OCCURRENCES OF '''' IN lv_chardesc_sql WITH ''''''.
-        lv_char_predicates = COND string(
-          WHEN lv_char_predicates IS INITIAL
-            THEN |chardescription = '{ lv_chardesc_sql }'|
-            ELSE |{ lv_char_predicates } AND chardescription = '{ lv_chardesc_sql }'| ).
-      ENDIF.
-
-      IF lv_char_predicates IS NOT INITIAL.
-        lv_char_exists = |NODEID IN ( SELECT CLFNOBJECTID FROM /BITMYM/I_Classification |
-                     && |WHERE { lv_char_predicates } )|.
-      ENDIF.
-    ENDIF.
-
-    IF lv_char_exists IS NOT INITIAL.
-      IF lv_combined_where IS INITIAL.
-        lv_combined_where = lv_char_exists.
-      ELSE.
-        lv_combined_where = |( { lv_combined_where } ) AND { lv_char_exists }|.
-      ENDIF.
+      lt_char_node_range = VALUE #(
+        FOR lv_char_nodeid IN lt_char_nodeids
+        ( sign = 'I' option = 'EQ' low = lv_char_nodeid ) ).
     ENDIF.
 
     DATA(lv_effective_where) = lv_combined_where.
@@ -426,16 +406,33 @@ CLASS /BITMYM/CL_PRODUCT_CATALOG_QP IMPLEMENTATION.
     REPLACE ALL OCCURRENCES OF 'src~' IN lv_effective_where WITH ''.
 
     IF lv_effective_where IS INITIAL.
-      SELECT (iv_select_list)
-        FROM (iv_from_syntax)
-        ORDER BY (iv_orderby)
-        INTO CORRESPONDING FIELDS OF TABLE @ct_data.
+      IF lt_char_node_range IS INITIAL.
+        SELECT (iv_select_list)
+          FROM (iv_from_syntax)
+          ORDER BY (iv_orderby)
+          INTO CORRESPONDING FIELDS OF TABLE @ct_data.
+      ELSE.
+        SELECT (iv_select_list)
+          FROM (iv_from_syntax)
+          WHERE nodeid IN @lt_char_node_range
+          ORDER BY (iv_orderby)
+          INTO CORRESPONDING FIELDS OF TABLE @ct_data.
+      ENDIF.
     ELSE.
-      SELECT (iv_select_list)
-        FROM (iv_from_syntax)
-        WHERE (lv_effective_where)
-        ORDER BY (iv_orderby)
-        INTO CORRESPONDING FIELDS OF TABLE @ct_data.
+      IF lt_char_node_range IS INITIAL.
+        SELECT (iv_select_list)
+          FROM (iv_from_syntax)
+          WHERE (lv_effective_where)
+          ORDER BY (iv_orderby)
+          INTO CORRESPONDING FIELDS OF TABLE @ct_data.
+      ELSE.
+        SELECT (iv_select_list)
+          FROM (iv_from_syntax)
+          WHERE (lv_effective_where)
+            AND nodeid IN @lt_char_node_range
+          ORDER BY (iv_orderby)
+          INTO CORRESPONDING FIELDS OF TABLE @ct_data.
+      ENDIF.
     ENDIF.
   ENDMETHOD.
 
@@ -553,49 +550,30 @@ CLASS /BITMYM/CL_PRODUCT_CATALOG_QP IMPLEMENTATION.
     DATA(lv_has_char_where) = xsdbool(
       lv_where_upper CS 'NODEID IN ( SELECT CLFNOBJECTID FROM /BITMYM/I_CLASSIFICATION'
       OR lv_where_upper CS 'EXISTS ( SELECT 1 FROM /BITMYM/I_CLASSIFICATION' ).
-    DATA(lv_char_exists) = CONV string( `` ).
-    DATA(lv_char_predicates) = CONV string( `` ).
+    DATA(lv_apply_char_filter) = xsdbool(
+      lv_has_char_where = abap_false
+      AND ( iv_charvalue IS NOT INITIAL
+         OR iv_charid IS NOT INITIAL
+         OR iv_chardescription IS NOT INITIAL ) ).
+    DATA lt_char_nodeids TYPE STANDARD TABLE OF /bitmym/i_classification-clfnobjectid WITH EMPTY KEY.
+    DATA lt_char_node_range TYPE RANGE OF /bitmym/i_product_catalog_hry-nodeid.
 
-    IF lv_has_char_where = abap_false
-       AND ( iv_charvalue IS NOT INITIAL
-          OR iv_charid IS NOT INITIAL
-          OR iv_chardescription IS NOT INITIAL ).
-      IF iv_charvalue IS NOT INITIAL.
-        DATA(lv_charvalue_sql) = CONV string( iv_charvalue ).
-        REPLACE ALL OCCURRENCES OF '''' IN lv_charvalue_sql WITH ''''''.
-        lv_char_predicates = |charvalue = '{ lv_charvalue_sql }'|.
+    IF lv_apply_char_filter = abap_true.
+      SELECT DISTINCT clfnobjectid
+        FROM /bitmym/i_classification
+        WHERE ( @iv_charvalue IS INITIAL OR charvalue = @iv_charvalue )
+          AND ( @iv_charid IS INITIAL OR charid = @iv_charid )
+          AND ( @iv_chardescription IS INITIAL OR chardescription = @iv_chardescription )
+        INTO TABLE @lt_char_nodeids.
+
+      IF lt_char_nodeids IS INITIAL.
+        rv_count = 0.
+        RETURN.
       ENDIF.
 
-      IF iv_charid IS NOT INITIAL.
-        DATA(lv_charid_sql) = CONV string( iv_charid ).
-        REPLACE ALL OCCURRENCES OF '''' IN lv_charid_sql WITH ''''''.
-        lv_char_predicates = COND string(
-          WHEN lv_char_predicates IS INITIAL
-            THEN |charid = '{ lv_charid_sql }'|
-            ELSE |{ lv_char_predicates } AND charid = '{ lv_charid_sql }'| ).
-      ENDIF.
-
-      IF iv_chardescription IS NOT INITIAL.
-        DATA(lv_chardesc_sql) = CONV string( iv_chardescription ).
-        REPLACE ALL OCCURRENCES OF '''' IN lv_chardesc_sql WITH ''''''.
-        lv_char_predicates = COND string(
-          WHEN lv_char_predicates IS INITIAL
-            THEN |chardescription = '{ lv_chardesc_sql }'|
-            ELSE |{ lv_char_predicates } AND chardescription = '{ lv_chardesc_sql }'| ).
-      ENDIF.
-
-      IF lv_char_predicates IS NOT INITIAL.
-        lv_char_exists = |NODEID IN ( SELECT CLFNOBJECTID FROM /BITMYM/I_Classification |
-                     && |WHERE { lv_char_predicates } )|.
-      ENDIF.
-    ENDIF.
-
-    IF lv_char_exists IS NOT INITIAL.
-      IF lv_combined_where IS INITIAL.
-        lv_combined_where = lv_char_exists.
-      ELSE.
-        lv_combined_where = |( { lv_combined_where } ) AND { lv_char_exists }|.
-      ENDIF.
+      lt_char_node_range = VALUE #(
+        FOR lv_char_nodeid IN lt_char_nodeids
+        ( sign = 'I' option = 'EQ' low = lv_char_nodeid ) ).
     ENDIF.
 
     DATA(lv_effective_where) = lv_combined_where.
@@ -603,14 +581,29 @@ CLASS /BITMYM/CL_PRODUCT_CATALOG_QP IMPLEMENTATION.
     REPLACE ALL OCCURRENCES OF 'src~' IN lv_effective_where WITH ''.
 
     IF lv_effective_where IS INITIAL.
-      SELECT COUNT( * )
-        FROM (iv_from_syntax)
-        INTO @rv_count.
+      IF lt_char_node_range IS INITIAL.
+        SELECT COUNT( * )
+          FROM (iv_from_syntax)
+          INTO @rv_count.
+      ELSE.
+        SELECT COUNT( * )
+          FROM (iv_from_syntax)
+          WHERE nodeid IN @lt_char_node_range
+          INTO @rv_count.
+      ENDIF.
     ELSE.
-      SELECT COUNT( * )
-        FROM (iv_from_syntax)
-        WHERE (lv_effective_where)
-        INTO @rv_count.
+      IF lt_char_node_range IS INITIAL.
+        SELECT COUNT( * )
+          FROM (iv_from_syntax)
+          WHERE (lv_effective_where)
+          INTO @rv_count.
+      ELSE.
+        SELECT COUNT( * )
+          FROM (iv_from_syntax)
+          WHERE (lv_effective_where)
+            AND nodeid IN @lt_char_node_range
+          INTO @rv_count.
+      ENDIF.
     ENDIF.
   ENDMETHOD.
 
