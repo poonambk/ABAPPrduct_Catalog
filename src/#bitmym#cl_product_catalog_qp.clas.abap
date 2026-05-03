@@ -253,12 +253,9 @@ CLASS /BITMYM/CL_PRODUCT_CATALOG_QP IMPLEMENTATION.
       iv_page_size  = lv_page_size ).
 
     DATA(lv_select_list) = get_select_list_from_request( io_request ).
-    DATA(lv_from_syntax) = ||.
-    IF gv_source_cds <> gc_source_product_hry.
-      DATA(lv_root_node_sql) = CONV string( lv_root_node ).
-      REPLACE ALL OCCURRENCES OF '''' IN lv_root_node_sql WITH ''''''.
-      lv_from_syntax = |{ gv_source_cds }( p_root_node = '{ lv_root_node_sql }', p_max_depth = { lv_max_depth } )|.
-    ENDIF.
+    DATA(lv_root_node_sql) = CONV string( lv_root_node ).
+    REPLACE ALL OCCURRENCES OF '''' IN lv_root_node_sql WITH ''''''.
+    DATA(lv_from_syntax) = |{ gv_source_cds }( p_root_node = '{ lv_root_node_sql }', p_max_depth = { lv_max_depth } )|.
 
     read_root_data(
       EXPORTING
@@ -351,88 +348,45 @@ CLASS /BITMYM/CL_PRODUCT_CATALOG_QP IMPLEMENTATION.
     CLEAR ct_data.
 
     DATA(lv_has_row_limit) = xsdbool( iv_fetch_rows > 0 ).
-    DATA(lv_has_char_filter) = xsdbool(
-      iv_charvalue IS NOT INITIAL
-      OR iv_charid IS NOT INITIAL
-      OR iv_chardescription IS NOT INITIAL ).
-    IF gv_source_cds = gc_source_product_hry.
-      DATA(lv_combined_where) = CONV string( iv_where ).
-      DATA(lv_char_exists) = CONV string( `` ).
+    DATA(lv_combined_where) = CONV string( iv_where ).
+    DATA(lv_char_exists) = CONV string( `` ).
 
-      IF lv_has_char_filter = abap_true.
-        lv_char_exists = |EXISTS ( SELECT 1 FROM /BITMYM/I_Classification |
-                      && |WHERE ClfnObjectID = nodeid|.
+    IF iv_charvalue IS NOT INITIAL
+       OR iv_charid IS NOT INITIAL
+       OR iv_chardescription IS NOT INITIAL.
+      lv_char_exists = |EXISTS ( SELECT 1 FROM /BITMYM/I_Classification |
+                    && |WHERE ClfnObjectID = nodeid|.
 
-        IF iv_charvalue IS NOT INITIAL.
-          DATA(lv_charvalue_sql) = CONV string( iv_charvalue ).
-          REPLACE ALL OCCURRENCES OF '''' IN lv_charvalue_sql WITH ''''''.
-          lv_char_exists = |{ lv_char_exists } AND charvalue = '{ lv_charvalue_sql }'|.
-        ENDIF.
-
-        IF iv_charid IS NOT INITIAL.
-          DATA(lv_charid_sql) = CONV string( iv_charid ).
-          REPLACE ALL OCCURRENCES OF '''' IN lv_charid_sql WITH ''''''.
-          lv_char_exists = |{ lv_char_exists } AND charid = '{ lv_charid_sql }'|.
-        ENDIF.
-
-        IF iv_chardescription IS NOT INITIAL.
-          DATA(lv_chardesc_sql) = CONV string( iv_chardescription ).
-          REPLACE ALL OCCURRENCES OF '''' IN lv_chardesc_sql WITH ''''''.
-          lv_char_exists = |{ lv_char_exists } AND chardescription = '{ lv_chardesc_sql }'|.
-        ENDIF.
-
-        lv_char_exists = |{ lv_char_exists } )|.
+      IF iv_charvalue IS NOT INITIAL.
+        DATA(lv_charvalue_sql) = CONV string( iv_charvalue ).
+        REPLACE ALL OCCURRENCES OF '''' IN lv_charvalue_sql WITH ''''''.
+        lv_char_exists = |{ lv_char_exists } AND charvalue = '{ lv_charvalue_sql }'|.
       ENDIF.
 
-      IF lv_char_exists IS NOT INITIAL.
-        IF lv_combined_where IS INITIAL.
-          lv_combined_where = lv_char_exists.
-        ELSE.
-          lv_combined_where = |( { lv_combined_where } ) AND { lv_char_exists }|.
-        ENDIF.
+      IF iv_charid IS NOT INITIAL.
+        DATA(lv_charid_sql) = CONV string( iv_charid ).
+        REPLACE ALL OCCURRENCES OF '''' IN lv_charid_sql WITH ''''''.
+        lv_char_exists = |{ lv_char_exists } AND charid = '{ lv_charid_sql }'|.
       ENDIF.
 
-      IF lv_combined_where IS INITIAL.
-        IF lv_has_row_limit = abap_true.
-          SELECT (iv_select_list)
-            FROM /bitmym/i_product_catalog_hry(
-                   p_root_node = @iv_root_node,
-                   p_max_depth = @iv_max_depth )
-            ORDER BY (iv_orderby)
-            INTO CORRESPONDING FIELDS OF TABLE @ct_data
-            UP TO @iv_fetch_rows ROWS.
-        ELSE.
-          SELECT (iv_select_list)
-            FROM /bitmym/i_product_catalog_hry(
-                   p_root_node = @iv_root_node,
-                   p_max_depth = @iv_max_depth )
-            ORDER BY (iv_orderby)
-            INTO CORRESPONDING FIELDS OF TABLE @ct_data.
-        ENDIF.
-      ELSE.
-        IF lv_has_row_limit = abap_true.
-          SELECT DISTINCT (iv_select_list)
-            FROM /bitmym/i_product_catalog_hry(
-                   p_root_node = @iv_root_node,
-                   p_max_depth = @iv_max_depth )
-            WHERE (lv_combined_where)
-            ORDER BY (iv_orderby)
-            INTO CORRESPONDING FIELDS OF TABLE @ct_data
-            UP TO @iv_fetch_rows ROWS.
-        ELSE.
-          SELECT DISTINCT (iv_select_list)
-            FROM /bitmym/i_product_catalog_hry(
-                   p_root_node = @iv_root_node,
-                   p_max_depth = @iv_max_depth )
-            WHERE (lv_combined_where)
-            ORDER BY (iv_orderby)
-            INTO CORRESPONDING FIELDS OF TABLE @ct_data.
-        ENDIF.
+      IF iv_chardescription IS NOT INITIAL.
+        DATA(lv_chardesc_sql) = CONV string( iv_chardescription ).
+        REPLACE ALL OCCURRENCES OF '''' IN lv_chardesc_sql WITH ''''''.
+        lv_char_exists = |{ lv_char_exists } AND chardescription = '{ lv_chardesc_sql }'|.
       ENDIF.
-      RETURN.
+
+      lv_char_exists = |{ lv_char_exists } )|.
     ENDIF.
 
-    IF iv_where IS INITIAL.
+    IF lv_char_exists IS NOT INITIAL.
+      IF lv_combined_where IS INITIAL.
+        lv_combined_where = lv_char_exists.
+      ELSE.
+        lv_combined_where = |( { lv_combined_where } ) AND { lv_char_exists }|.
+      ENDIF.
+    ENDIF.
+
+    IF lv_combined_where IS INITIAL.
       IF lv_has_row_limit = abap_true.
         SELECT (iv_select_list)
           FROM (iv_from_syntax)
@@ -449,14 +403,14 @@ CLASS /BITMYM/CL_PRODUCT_CATALOG_QP IMPLEMENTATION.
       IF lv_has_row_limit = abap_true.
         SELECT DISTINCT (iv_select_list)
           FROM (iv_from_syntax)
-          WHERE (iv_where)
+          WHERE (lv_combined_where)
           ORDER BY (iv_orderby)
           INTO CORRESPONDING FIELDS OF TABLE @ct_data
           UP TO @iv_fetch_rows ROWS.
       ELSE.
         SELECT DISTINCT (iv_select_list)
           FROM (iv_from_syntax)
-          WHERE (iv_where)
+          WHERE (lv_combined_where)
           ORDER BY (iv_orderby)
           INTO CORRESPONDING FIELDS OF TABLE @ct_data.
       ENDIF.
@@ -572,70 +526,52 @@ CLASS /BITMYM/CL_PRODUCT_CATALOG_QP IMPLEMENTATION.
 
 
   METHOD get_total_count.
-    IF gv_source_cds = gc_source_product_hry.
-      DATA(lv_combined_where) = CONV string( iv_where ).
-      DATA(lv_char_exists) = CONV string( `` ).
+    DATA(lv_combined_where) = CONV string( iv_where ).
+    DATA(lv_char_exists) = CONV string( `` ).
 
-      IF iv_charvalue IS NOT INITIAL
-         OR iv_charid IS NOT INITIAL
-         OR iv_chardescription IS NOT INITIAL.
-        lv_char_exists = |EXISTS ( SELECT 1 FROM /BITMYM/I_Classification |
-                      && |WHERE ClfnObjectID = nodeid|.
+    IF iv_charvalue IS NOT INITIAL
+       OR iv_charid IS NOT INITIAL
+       OR iv_chardescription IS NOT INITIAL.
+      lv_char_exists = |EXISTS ( SELECT 1 FROM /BITMYM/I_Classification |
+                    && |WHERE ClfnObjectID = nodeid|.
 
-        IF iv_charvalue IS NOT INITIAL.
-          DATA(lv_charvalue_sql) = CONV string( iv_charvalue ).
-          REPLACE ALL OCCURRENCES OF '''' IN lv_charvalue_sql WITH ''''''.
-          lv_char_exists = |{ lv_char_exists } AND charvalue = '{ lv_charvalue_sql }'|.
-        ENDIF.
-
-        IF iv_charid IS NOT INITIAL.
-          DATA(lv_charid_sql) = CONV string( iv_charid ).
-          REPLACE ALL OCCURRENCES OF '''' IN lv_charid_sql WITH ''''''.
-          lv_char_exists = |{ lv_char_exists } AND charid = '{ lv_charid_sql }'|.
-        ENDIF.
-
-        IF iv_chardescription IS NOT INITIAL.
-          DATA(lv_chardesc_sql) = CONV string( iv_chardescription ).
-          REPLACE ALL OCCURRENCES OF '''' IN lv_chardesc_sql WITH ''''''.
-          lv_char_exists = |{ lv_char_exists } AND chardescription = '{ lv_chardesc_sql }'|.
-        ENDIF.
-
-        lv_char_exists = |{ lv_char_exists } )|.
+      IF iv_charvalue IS NOT INITIAL.
+        DATA(lv_charvalue_sql) = CONV string( iv_charvalue ).
+        REPLACE ALL OCCURRENCES OF '''' IN lv_charvalue_sql WITH ''''''.
+        lv_char_exists = |{ lv_char_exists } AND charvalue = '{ lv_charvalue_sql }'|.
       ENDIF.
 
-      IF lv_char_exists IS NOT INITIAL.
-        IF lv_combined_where IS INITIAL.
-          lv_combined_where = lv_char_exists.
-        ELSE.
-          lv_combined_where = |( { lv_combined_where } ) AND { lv_char_exists }|.
-        ENDIF.
+      IF iv_charid IS NOT INITIAL.
+        DATA(lv_charid_sql) = CONV string( iv_charid ).
+        REPLACE ALL OCCURRENCES OF '''' IN lv_charid_sql WITH ''''''.
+        lv_char_exists = |{ lv_char_exists } AND charid = '{ lv_charid_sql }'|.
       ENDIF.
 
-      IF lv_combined_where IS INITIAL.
-        SELECT COUNT( * )
-          FROM /bitmym/i_product_catalog_hry(
-                 p_root_node = @iv_root_node,
-                 p_max_depth = @iv_max_depth )
-          INTO @rv_count.
-      ELSE.
-        SELECT COUNT( * )
-          FROM /bitmym/i_product_catalog_hry(
-                 p_root_node = @iv_root_node,
-                 p_max_depth = @iv_max_depth )
-          WHERE (lv_combined_where)
-          INTO @rv_count.
+      IF iv_chardescription IS NOT INITIAL.
+        DATA(lv_chardesc_sql) = CONV string( iv_chardescription ).
+        REPLACE ALL OCCURRENCES OF '''' IN lv_chardesc_sql WITH ''''''.
+        lv_char_exists = |{ lv_char_exists } AND chardescription = '{ lv_chardesc_sql }'|.
       ENDIF.
-      RETURN.
+
+      lv_char_exists = |{ lv_char_exists } )|.
     ENDIF.
 
-    IF iv_where IS INITIAL.
+    IF lv_char_exists IS NOT INITIAL.
+      IF lv_combined_where IS INITIAL.
+        lv_combined_where = lv_char_exists.
+      ELSE.
+        lv_combined_where = |( { lv_combined_where } ) AND { lv_char_exists }|.
+      ENDIF.
+    ENDIF.
+
+    IF lv_combined_where IS INITIAL.
       SELECT COUNT( * )
         FROM (iv_from_syntax)
         INTO @rv_count.
     ELSE.
       SELECT COUNT( * )
         FROM (iv_from_syntax)
-        WHERE (iv_where)
+        WHERE (lv_combined_where)
         INTO @rv_count.
     ENDIF.
   ENDMETHOD.
