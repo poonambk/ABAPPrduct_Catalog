@@ -22,9 +22,9 @@ CLASS /BITMYM/CL_PRODUCT_CATALOG_QP DEFINITION
 
     TYPES:
       BEGIN OF ty_product_catalog,
-        chardescription     TYPE /bitmym/i_product_catalog_hry-chardescription,
-        charid              TYPE /bitmym/i_product_catalog_hry-charid,
-        charvalue           TYPE /bitmym/i_product_catalog_hry-charvalue,
+        characteristicdescription TYPE /bitmym/i_product_catalog_hry-characteristicdescription,
+        charcinternalid           TYPE /bitmym/i_product_catalog_hry-charcinternalid,
+        charvalue                 TYPE /bitmym/i_product_catalog_hry-charvalue,
         nodeid              TYPE /bitmym/i_product_catalog_hry-nodeid,
         parentnodeid        TYPE /bitmym/i_product_catalog_hry-parentnodeid,
         nodetext            TYPE /bitmym/i_product_catalog_hry-nodetext,
