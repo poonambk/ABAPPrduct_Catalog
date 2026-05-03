@@ -349,11 +349,16 @@ CLASS /BITMYM/CL_PRODUCT_CATALOG_QP IMPLEMENTATION.
 
     DATA(lv_has_row_limit) = xsdbool( iv_fetch_rows > 0 ).
     DATA(lv_combined_where) = CONV string( iv_where ).
+    DATA(lv_where_upper) = to_upper( lv_combined_where ).
+    DATA(lv_has_char_where) = xsdbool(
+      lv_where_upper CS 'NODEID IN ( SELECT CLFNOBJECTID FROM /BITMYM/I_CLASSIFICATION'
+      OR lv_where_upper CS 'EXISTS ( SELECT 1 FROM /BITMYM/I_CLASSIFICATION' ).
     DATA(lv_char_exists) = CONV string( `` ).
 
-    IF iv_charvalue IS NOT INITIAL
-       OR iv_charid IS NOT INITIAL
-       OR iv_chardescription IS NOT INITIAL.
+    IF lv_has_char_where = abap_false
+       AND ( iv_charvalue IS NOT INITIAL
+          OR iv_charid IS NOT INITIAL
+          OR iv_chardescription IS NOT INITIAL ).
       lv_char_exists = |NODEID IN ( SELECT CLFNOBJECTID FROM /BITMYM/I_Classification |
                     && |WHERE 1 = 1|.
 
@@ -531,11 +536,16 @@ CLASS /BITMYM/CL_PRODUCT_CATALOG_QP IMPLEMENTATION.
 
   METHOD get_total_count.
     DATA(lv_combined_where) = CONV string( iv_where ).
+    DATA(lv_where_upper) = to_upper( lv_combined_where ).
+    DATA(lv_has_char_where) = xsdbool(
+      lv_where_upper CS 'NODEID IN ( SELECT CLFNOBJECTID FROM /BITMYM/I_CLASSIFICATION'
+      OR lv_where_upper CS 'EXISTS ( SELECT 1 FROM /BITMYM/I_CLASSIFICATION' ).
     DATA(lv_char_exists) = CONV string( `` ).
 
-    IF iv_charvalue IS NOT INITIAL
-       OR iv_charid IS NOT INITIAL
-       OR iv_chardescription IS NOT INITIAL.
+    IF lv_has_char_where = abap_false
+       AND ( iv_charvalue IS NOT INITIAL
+          OR iv_charid IS NOT INITIAL
+          OR iv_chardescription IS NOT INITIAL ).
       lv_char_exists = |NODEID IN ( SELECT CLFNOBJECTID FROM /BITMYM/I_Classification |
                     && |WHERE 1 = 1|.
 
