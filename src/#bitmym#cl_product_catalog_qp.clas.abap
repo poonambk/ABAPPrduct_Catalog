@@ -371,14 +371,6 @@ CLASS /BITMYM/CL_PRODUCT_CATALOG_QP IMPLEMENTATION.
   METHOD read_root_data.
     CLEAR ct_data.
 
-    DATA lv_charvalue_filter TYPE /bitmym/i_classification-charvalue.
-    DATA lv_charid_filter TYPE /bitmym/i_classification-charid.
-    DATA lv_chardesc_filter TYPE /bitmym/i_classification-chardescription.
-
-    lv_charvalue_filter = CONV #( iv_charvalue ).
-    lv_charid_filter = CONV #( iv_charid ).
-    lv_chardesc_filter = CONV #( iv_chardescription ).
-
     DATA(lv_combined_where) = CONV string( iv_where ).
     DATA(lv_where_upper) = to_upper( lv_combined_where ).
     DATA(lv_has_char_where) = xsdbool(
@@ -389,15 +381,38 @@ CLASS /BITMYM/CL_PRODUCT_CATALOG_QP IMPLEMENTATION.
       AND ( iv_charvalue IS NOT INITIAL
          OR iv_charid IS NOT INITIAL
          OR iv_chardescription IS NOT INITIAL ) ).
+    DATA(lv_char_filter_where) = CONV string( `` ).
     DATA lt_char_nodeids TYPE STANDARD TABLE OF /bitmym/i_classification-clfnobjectid WITH EMPTY KEY.
     DATA lt_char_node_range TYPE RANGE OF /bitmym/i_product_catalog_hry-nodeid.
 
     IF lv_apply_char_filter = abap_true.
+      IF iv_charvalue IS NOT INITIAL.
+        DATA(lv_charvalue_sql) = CONV string( iv_charvalue ).
+        REPLACE ALL OCCURRENCES OF '''' IN lv_charvalue_sql WITH ''''''.
+        lv_char_filter_where = |charvalue = '{ lv_charvalue_sql }'|.
+      ENDIF.
+
+      IF iv_charid IS NOT INITIAL.
+        DATA(lv_charid_sql) = CONV string( iv_charid ).
+        REPLACE ALL OCCURRENCES OF '''' IN lv_charid_sql WITH ''''''.
+        lv_char_filter_where = COND string(
+          WHEN lv_char_filter_where IS INITIAL
+            THEN |charid = '{ lv_charid_sql }'|
+            ELSE |{ lv_char_filter_where } AND charid = '{ lv_charid_sql }'| ).
+      ENDIF.
+
+      IF iv_chardescription IS NOT INITIAL.
+        DATA(lv_chardesc_sql) = CONV string( iv_chardescription ).
+        REPLACE ALL OCCURRENCES OF '''' IN lv_chardesc_sql WITH ''''''.
+        lv_char_filter_where = COND string(
+          WHEN lv_char_filter_where IS INITIAL
+            THEN |chardescription = '{ lv_chardesc_sql }'|
+            ELSE |{ lv_char_filter_where } AND chardescription = '{ lv_chardesc_sql }'| ).
+      ENDIF.
+
       SELECT DISTINCT clfnobjectid
         FROM /bitmym/i_classification
-        WHERE ( @lv_charvalue_filter IS INITIAL OR charvalue = @lv_charvalue_filter )
-          AND ( @lv_charid_filter IS INITIAL OR charid = @lv_charid_filter )
-          AND ( @lv_chardesc_filter IS INITIAL OR chardescription = @lv_chardesc_filter )
+        WHERE (lv_char_filter_where)
         INTO TABLE @lt_char_nodeids.
 
       IF lt_char_nodeids IS INITIAL.
@@ -553,14 +568,6 @@ CLASS /BITMYM/CL_PRODUCT_CATALOG_QP IMPLEMENTATION.
 
 
   METHOD get_total_count.
-    DATA lv_charvalue_filter TYPE /bitmym/i_classification-charvalue.
-    DATA lv_charid_filter TYPE /bitmym/i_classification-charid.
-    DATA lv_chardesc_filter TYPE /bitmym/i_classification-chardescription.
-
-    lv_charvalue_filter = CONV #( iv_charvalue ).
-    lv_charid_filter = CONV #( iv_charid ).
-    lv_chardesc_filter = CONV #( iv_chardescription ).
-
     DATA(lv_combined_where) = CONV string( iv_where ).
     DATA(lv_where_upper) = to_upper( lv_combined_where ).
     DATA(lv_has_char_where) = xsdbool(
@@ -571,15 +578,38 @@ CLASS /BITMYM/CL_PRODUCT_CATALOG_QP IMPLEMENTATION.
       AND ( iv_charvalue IS NOT INITIAL
          OR iv_charid IS NOT INITIAL
          OR iv_chardescription IS NOT INITIAL ) ).
+    DATA(lv_char_filter_where) = CONV string( `` ).
     DATA lt_char_nodeids TYPE STANDARD TABLE OF /bitmym/i_classification-clfnobjectid WITH EMPTY KEY.
     DATA lt_char_node_range TYPE RANGE OF /bitmym/i_product_catalog_hry-nodeid.
 
     IF lv_apply_char_filter = abap_true.
+      IF iv_charvalue IS NOT INITIAL.
+        DATA(lv_charvalue_sql) = CONV string( iv_charvalue ).
+        REPLACE ALL OCCURRENCES OF '''' IN lv_charvalue_sql WITH ''''''.
+        lv_char_filter_where = |charvalue = '{ lv_charvalue_sql }'|.
+      ENDIF.
+
+      IF iv_charid IS NOT INITIAL.
+        DATA(lv_charid_sql) = CONV string( iv_charid ).
+        REPLACE ALL OCCURRENCES OF '''' IN lv_charid_sql WITH ''''''.
+        lv_char_filter_where = COND string(
+          WHEN lv_char_filter_where IS INITIAL
+            THEN |charid = '{ lv_charid_sql }'|
+            ELSE |{ lv_char_filter_where } AND charid = '{ lv_charid_sql }'| ).
+      ENDIF.
+
+      IF iv_chardescription IS NOT INITIAL.
+        DATA(lv_chardesc_sql) = CONV string( iv_chardescription ).
+        REPLACE ALL OCCURRENCES OF '''' IN lv_chardesc_sql WITH ''''''.
+        lv_char_filter_where = COND string(
+          WHEN lv_char_filter_where IS INITIAL
+            THEN |chardescription = '{ lv_chardesc_sql }'|
+            ELSE |{ lv_char_filter_where } AND chardescription = '{ lv_chardesc_sql }'| ).
+      ENDIF.
+
       SELECT DISTINCT clfnobjectid
         FROM /bitmym/i_classification
-        WHERE ( @lv_charvalue_filter IS INITIAL OR charvalue = @lv_charvalue_filter )
-          AND ( @lv_charid_filter IS INITIAL OR charid = @lv_charid_filter )
-          AND ( @lv_chardesc_filter IS INITIAL OR chardescription = @lv_chardesc_filter )
+        WHERE (lv_char_filter_where)
         INTO TABLE @lt_char_nodeids.
 
       IF lt_char_nodeids IS INITIAL.
