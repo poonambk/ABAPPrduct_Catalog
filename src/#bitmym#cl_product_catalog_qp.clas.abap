@@ -395,10 +395,12 @@ CLASS /BITMYM/CL_PRODUCT_CATALOG_QP IMPLEMENTATION.
       IF iv_charid IS NOT INITIAL.
         DATA(lv_charid_sql) = CONV string( iv_charid ).
         REPLACE ALL OCCURRENCES OF '''' IN lv_charid_sql WITH ''''''.
+        DATA(lv_charid_predicate) =
+          |( charcinternalid = '{ lv_charid_sql }' OR characteristic = '{ lv_charid_sql }' )|.
         lv_char_filter_where = COND string(
           WHEN lv_char_filter_where IS INITIAL
-            THEN |characteristic = '{ lv_charid_sql }'|
-            ELSE |{ lv_char_filter_where } AND characteristic = '{ lv_charid_sql }'| ).
+            THEN lv_charid_predicate
+            ELSE |{ lv_char_filter_where } AND { lv_charid_predicate }| ).
       ENDIF.
 
       IF iv_chardescription IS NOT INITIAL.
@@ -592,10 +594,12 @@ CLASS /BITMYM/CL_PRODUCT_CATALOG_QP IMPLEMENTATION.
       IF iv_charid IS NOT INITIAL.
         DATA(lv_charid_sql) = CONV string( iv_charid ).
         REPLACE ALL OCCURRENCES OF '''' IN lv_charid_sql WITH ''''''.
+        DATA(lv_charid_predicate) =
+          |( charcinternalid = '{ lv_charid_sql }' OR characteristic = '{ lv_charid_sql }' )|.
         lv_char_filter_where = COND string(
           WHEN lv_char_filter_where IS INITIAL
-            THEN |characteristic = '{ lv_charid_sql }'|
-            ELSE |{ lv_char_filter_where } AND characteristic = '{ lv_charid_sql }'| ).
+            THEN lv_charid_predicate
+            ELSE |{ lv_char_filter_where } AND { lv_charid_predicate }| ).
       ENDIF.
 
       IF iv_chardescription IS NOT INITIAL.
