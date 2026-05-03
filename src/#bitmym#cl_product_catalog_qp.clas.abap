@@ -356,105 +356,77 @@ CLASS /BITMYM/CL_PRODUCT_CATALOG_QP IMPLEMENTATION.
       OR iv_charid IS NOT INITIAL
       OR iv_chardescription IS NOT INITIAL ).
     IF gv_source_cds = gc_source_product_hry.
-      IF iv_where IS INITIAL.
-        IF lv_has_char_filter = abap_false.
-          IF lv_has_row_limit = abap_true.
-            SELECT (iv_select_list)
-              FROM /bitmym/i_product_catalog_hry(
-                     p_root_node = @iv_root_node,
-                     p_max_depth = @iv_max_depth )
-              ORDER BY (iv_orderby)
-              INTO CORRESPONDING FIELDS OF TABLE @ct_data
-              UP TO @iv_fetch_rows ROWS.
-          ELSE.
-            SELECT (iv_select_list)
-              FROM /bitmym/i_product_catalog_hry(
-                     p_root_node = @iv_root_node,
-                     p_max_depth = @iv_max_depth )
-              ORDER BY (iv_orderby)
-              INTO CORRESPONDING FIELDS OF TABLE @ct_data.
-          ENDIF.
+      DATA(lv_combined_where) = CONV string( iv_where ).
+      DATA(lv_char_exists) = CONV string( `` ).
+
+      IF lv_has_char_filter = abap_true.
+        lv_char_exists = |EXISTS ( SELECT 1 FROM /BITMYM/I_Classification |
+                      && |WHERE ClfnObjectID = nodeid|.
+
+        IF iv_charvalue IS NOT INITIAL.
+          DATA(lv_charvalue_sql) = CONV string( iv_charvalue ).
+          REPLACE ALL OCCURRENCES OF '''' IN lv_charvalue_sql WITH ''''''.
+          lv_char_exists = |{ lv_char_exists } AND charvalue = '{ lv_charvalue_sql }'|.
+        ENDIF.
+
+        IF iv_charid IS NOT INITIAL.
+          DATA(lv_charid_sql) = CONV string( iv_charid ).
+          REPLACE ALL OCCURRENCES OF '''' IN lv_charid_sql WITH ''''''.
+          lv_char_exists = |{ lv_char_exists } AND charid = '{ lv_charid_sql }'|.
+        ENDIF.
+
+        IF iv_chardescription IS NOT INITIAL.
+          DATA(lv_chardesc_sql) = CONV string( iv_chardescription ).
+          REPLACE ALL OCCURRENCES OF '''' IN lv_chardesc_sql WITH ''''''.
+          lv_char_exists = |{ lv_char_exists } AND chardescription = '{ lv_chardesc_sql }'|.
+        ENDIF.
+
+        lv_char_exists = |{ lv_char_exists } )|.
+      ENDIF.
+
+      IF lv_char_exists IS NOT INITIAL.
+        IF lv_combined_where IS INITIAL.
+          lv_combined_where = lv_char_exists.
         ELSE.
-          IF lv_has_row_limit = abap_true.
-            SELECT DISTINCT (iv_select_list)
-              FROM /bitmym/i_product_catalog_hry(
-                     p_root_node = @iv_root_node,
-                     p_max_depth = @iv_max_depth )
-              WHERE EXISTS ( SELECT 1
-                               FROM /bitmym/i_classification
-                              WHERE clfnobjectid = nodeid
-                                AND ( @iv_charvalue IS INITIAL OR charvalue = @iv_charvalue )
-                                AND ( @iv_charid IS INITIAL OR charid = @iv_charid )
-                                AND ( @iv_chardescription IS INITIAL OR chardescription = @iv_chardescription ) )
-              ORDER BY (iv_orderby)
-              INTO CORRESPONDING FIELDS OF TABLE @ct_data
-              UP TO @iv_fetch_rows ROWS.
-          ELSE.
-            SELECT DISTINCT (iv_select_list)
-              FROM /bitmym/i_product_catalog_hry(
-                     p_root_node = @iv_root_node,
-                     p_max_depth = @iv_max_depth )
-              WHERE EXISTS ( SELECT 1
-                               FROM /bitmym/i_classification
-                              WHERE clfnobjectid = nodeid
-                                AND ( @iv_charvalue IS INITIAL OR charvalue = @iv_charvalue )
-                                AND ( @iv_charid IS INITIAL OR charid = @iv_charid )
-                                AND ( @iv_chardescription IS INITIAL OR chardescription = @iv_chardescription ) )
-              ORDER BY (iv_orderby)
-              INTO CORRESPONDING FIELDS OF TABLE @ct_data.
-          ENDIF.
+          lv_combined_where = |( { lv_combined_where } ) AND { lv_char_exists }|.
+        ENDIF.
+      ENDIF.
+
+      IF lv_combined_where IS INITIAL.
+        IF lv_has_row_limit = abap_true.
+          SELECT (iv_select_list)
+            FROM /bitmym/i_product_catalog_hry(
+                   p_root_node = @iv_root_node,
+                   p_max_depth = @iv_max_depth )
+            ORDER BY (iv_orderby)
+            INTO CORRESPONDING FIELDS OF TABLE @ct_data
+            UP TO @iv_fetch_rows ROWS.
+        ELSE.
+          SELECT (iv_select_list)
+            FROM /bitmym/i_product_catalog_hry(
+                   p_root_node = @iv_root_node,
+                   p_max_depth = @iv_max_depth )
+            ORDER BY (iv_orderby)
+            INTO CORRESPONDING FIELDS OF TABLE @ct_data.
         ENDIF.
       ELSE.
-        IF lv_has_char_filter = abap_false.
-          IF lv_has_row_limit = abap_true.
-            SELECT DISTINCT (iv_select_list)
-              FROM /bitmym/i_product_catalog_hry(
-                     p_root_node = @iv_root_node,
-                     p_max_depth = @iv_max_depth )
-              WHERE (iv_where)
-              ORDER BY (iv_orderby)
-              INTO CORRESPONDING FIELDS OF TABLE @ct_data
-              UP TO @iv_fetch_rows ROWS.
-          ELSE.
-            SELECT DISTINCT (iv_select_list)
-              FROM /bitmym/i_product_catalog_hry(
-                     p_root_node = @iv_root_node,
-                     p_max_depth = @iv_max_depth )
-              WHERE (iv_where)
-              ORDER BY (iv_orderby)
-              INTO CORRESPONDING FIELDS OF TABLE @ct_data.
-          ENDIF.
+        IF lv_has_row_limit = abap_true.
+          SELECT DISTINCT (iv_select_list)
+            FROM /bitmym/i_product_catalog_hry(
+                   p_root_node = @iv_root_node,
+                   p_max_depth = @iv_max_depth )
+            WHERE (lv_combined_where)
+            ORDER BY (iv_orderby)
+            INTO CORRESPONDING FIELDS OF TABLE @ct_data
+            UP TO @iv_fetch_rows ROWS.
         ELSE.
-          IF lv_has_row_limit = abap_true.
-            SELECT DISTINCT (iv_select_list)
-              FROM /bitmym/i_product_catalog_hry(
-                     p_root_node = @iv_root_node,
-                     p_max_depth = @iv_max_depth )
-              WHERE (iv_where)
-                AND EXISTS ( SELECT 1
-                               FROM /bitmym/i_classification
-                              WHERE clfnobjectid = nodeid
-                                AND ( @iv_charvalue IS INITIAL OR charvalue = @iv_charvalue )
-                                AND ( @iv_charid IS INITIAL OR charid = @iv_charid )
-                                AND ( @iv_chardescription IS INITIAL OR chardescription = @iv_chardescription ) )
-              ORDER BY (iv_orderby)
-              INTO CORRESPONDING FIELDS OF TABLE @ct_data
-              UP TO @iv_fetch_rows ROWS.
-          ELSE.
-            SELECT DISTINCT (iv_select_list)
-              FROM /bitmym/i_product_catalog_hry(
-                     p_root_node = @iv_root_node,
-                     p_max_depth = @iv_max_depth )
-              WHERE (iv_where)
-                AND EXISTS ( SELECT 1
-                               FROM /bitmym/i_classification
-                              WHERE clfnobjectid = nodeid
-                                AND ( @iv_charvalue IS INITIAL OR charvalue = @iv_charvalue )
-                                AND ( @iv_charid IS INITIAL OR charid = @iv_charid )
-                                AND ( @iv_chardescription IS INITIAL OR chardescription = @iv_chardescription ) )
-              ORDER BY (iv_orderby)
-              INTO CORRESPONDING FIELDS OF TABLE @ct_data.
-          ENDIF.
+          SELECT DISTINCT (iv_select_list)
+            FROM /bitmym/i_product_catalog_hry(
+                   p_root_node = @iv_root_node,
+                   p_max_depth = @iv_max_depth )
+            WHERE (lv_combined_where)
+            ORDER BY (iv_orderby)
+            INTO CORRESPONDING FIELDS OF TABLE @ct_data.
         ENDIF.
       ENDIF.
       RETURN.
@@ -600,54 +572,58 @@ CLASS /BITMYM/CL_PRODUCT_CATALOG_QP IMPLEMENTATION.
 
 
   METHOD get_total_count.
-    DATA(lv_has_char_filter) = xsdbool(
-      iv_charvalue IS NOT INITIAL
-      OR iv_charid IS NOT INITIAL
-      OR iv_chardescription IS NOT INITIAL ).
-
     IF gv_source_cds = gc_source_product_hry.
-      IF iv_where IS INITIAL.
-        IF lv_has_char_filter = abap_false.
-          SELECT COUNT( * )
-            FROM /bitmym/i_product_catalog_hry(
-                   p_root_node = @iv_root_node,
-                   p_max_depth = @iv_max_depth )
-            INTO @rv_count.
-        ELSE.
-          SELECT COUNT( * )
-            FROM /bitmym/i_product_catalog_hry(
-                   p_root_node = @iv_root_node,
-                   p_max_depth = @iv_max_depth )
-            WHERE EXISTS ( SELECT 1
-                             FROM /bitmym/i_classification
-                            WHERE clfnobjectid = nodeid
-                              AND ( @iv_charvalue IS INITIAL OR charvalue = @iv_charvalue )
-                              AND ( @iv_charid IS INITIAL OR charid = @iv_charid )
-                              AND ( @iv_chardescription IS INITIAL OR chardescription = @iv_chardescription ) )
-            INTO @rv_count.
+      DATA(lv_combined_where) = CONV string( iv_where ).
+      DATA(lv_char_exists) = CONV string( `` ).
+
+      IF iv_charvalue IS NOT INITIAL
+         OR iv_charid IS NOT INITIAL
+         OR iv_chardescription IS NOT INITIAL.
+        lv_char_exists = |EXISTS ( SELECT 1 FROM /BITMYM/I_Classification |
+                      && |WHERE ClfnObjectID = nodeid|.
+
+        IF iv_charvalue IS NOT INITIAL.
+          DATA(lv_charvalue_sql) = CONV string( iv_charvalue ).
+          REPLACE ALL OCCURRENCES OF '''' IN lv_charvalue_sql WITH ''''''.
+          lv_char_exists = |{ lv_char_exists } AND charvalue = '{ lv_charvalue_sql }'|.
         ENDIF.
+
+        IF iv_charid IS NOT INITIAL.
+          DATA(lv_charid_sql) = CONV string( iv_charid ).
+          REPLACE ALL OCCURRENCES OF '''' IN lv_charid_sql WITH ''''''.
+          lv_char_exists = |{ lv_char_exists } AND charid = '{ lv_charid_sql }'|.
+        ENDIF.
+
+        IF iv_chardescription IS NOT INITIAL.
+          DATA(lv_chardesc_sql) = CONV string( iv_chardescription ).
+          REPLACE ALL OCCURRENCES OF '''' IN lv_chardesc_sql WITH ''''''.
+          lv_char_exists = |{ lv_char_exists } AND chardescription = '{ lv_chardesc_sql }'|.
+        ENDIF.
+
+        lv_char_exists = |{ lv_char_exists } )|.
+      ENDIF.
+
+      IF lv_char_exists IS NOT INITIAL.
+        IF lv_combined_where IS INITIAL.
+          lv_combined_where = lv_char_exists.
+        ELSE.
+          lv_combined_where = |( { lv_combined_where } ) AND { lv_char_exists }|.
+        ENDIF.
+      ENDIF.
+
+      IF lv_combined_where IS INITIAL.
+        SELECT COUNT( * )
+          FROM /bitmym/i_product_catalog_hry(
+                 p_root_node = @iv_root_node,
+                 p_max_depth = @iv_max_depth )
+          INTO @rv_count.
       ELSE.
-        IF lv_has_char_filter = abap_false.
-          SELECT COUNT( * )
-            FROM /bitmym/i_product_catalog_hry(
-                   p_root_node = @iv_root_node,
-                   p_max_depth = @iv_max_depth )
-            WHERE (iv_where)
-            INTO @rv_count.
-        ELSE.
-          SELECT COUNT( * )
-            FROM /bitmym/i_product_catalog_hry(
-                   p_root_node = @iv_root_node,
-                   p_max_depth = @iv_max_depth )
-            WHERE (iv_where)
-              AND EXISTS ( SELECT 1
-                             FROM /bitmym/i_classification
-                            WHERE clfnobjectid = nodeid
-                              AND ( @iv_charvalue IS INITIAL OR charvalue = @iv_charvalue )
-                              AND ( @iv_charid IS INITIAL OR charid = @iv_charid )
-                              AND ( @iv_chardescription IS INITIAL OR chardescription = @iv_chardescription ) )
-            INTO @rv_count.
-        ENDIF.
+        SELECT COUNT( * )
+          FROM /bitmym/i_product_catalog_hry(
+                 p_root_node = @iv_root_node,
+                 p_max_depth = @iv_max_depth )
+          WHERE (lv_combined_where)
+          INTO @rv_count.
       ENDIF.
       RETURN.
     ENDIF.
