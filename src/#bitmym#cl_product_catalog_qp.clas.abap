@@ -386,7 +386,11 @@ CLASS /BITMYM/CL_PRODUCT_CATALOG_QP IMPLEMENTATION.
       ENDIF.
     ENDIF.
 
-    IF lv_combined_where IS INITIAL.
+    DATA(lv_effective_where) = lv_combined_where.
+    REPLACE ALL OCCURRENCES OF 'SRC~' IN lv_effective_where WITH ''.
+    REPLACE ALL OCCURRENCES OF 'src~' IN lv_effective_where WITH ''.
+
+    IF lv_effective_where IS INITIAL.
       IF lv_has_row_limit = abap_true.
         SELECT (iv_select_list)
           FROM (iv_from_syntax)
@@ -403,14 +407,14 @@ CLASS /BITMYM/CL_PRODUCT_CATALOG_QP IMPLEMENTATION.
       IF lv_has_row_limit = abap_true.
         SELECT DISTINCT (iv_select_list)
           FROM (iv_from_syntax)
-          WHERE (lv_combined_where)
+          WHERE (lv_effective_where)
           ORDER BY (iv_orderby)
           INTO CORRESPONDING FIELDS OF TABLE @ct_data
           UP TO @iv_fetch_rows ROWS.
       ELSE.
         SELECT DISTINCT (iv_select_list)
           FROM (iv_from_syntax)
-          WHERE (lv_combined_where)
+          WHERE (lv_effective_where)
           ORDER BY (iv_orderby)
           INTO CORRESPONDING FIELDS OF TABLE @ct_data.
       ENDIF.
@@ -564,14 +568,18 @@ CLASS /BITMYM/CL_PRODUCT_CATALOG_QP IMPLEMENTATION.
       ENDIF.
     ENDIF.
 
-    IF lv_combined_where IS INITIAL.
+    DATA(lv_effective_where) = lv_combined_where.
+    REPLACE ALL OCCURRENCES OF 'SRC~' IN lv_effective_where WITH ''.
+    REPLACE ALL OCCURRENCES OF 'src~' IN lv_effective_where WITH ''.
+
+    IF lv_effective_where IS INITIAL.
       SELECT COUNT( * )
         FROM (iv_from_syntax)
         INTO @rv_count.
     ELSE.
       SELECT COUNT( * )
         FROM (iv_from_syntax)
-        WHERE (lv_combined_where)
+        WHERE (lv_effective_where)
         INTO @rv_count.
     ENDIF.
   ENDMETHOD.
