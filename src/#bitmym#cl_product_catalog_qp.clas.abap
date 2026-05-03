@@ -378,33 +378,40 @@ CLASS /BITMYM/CL_PRODUCT_CATALOG_QP IMPLEMENTATION.
       lv_where_upper CS 'NODEID IN ( SELECT CLFNOBJECTID FROM /BITMYM/I_CLASSIFICATION'
       OR lv_where_upper CS 'EXISTS ( SELECT 1 FROM /BITMYM/I_CLASSIFICATION' ).
     DATA(lv_char_exists) = CONV string( `` ).
+    DATA(lv_char_predicates) = CONV string( `` ).
 
     IF lv_has_char_where = abap_false
        AND ( iv_charvalue IS NOT INITIAL
           OR iv_charid IS NOT INITIAL
           OR iv_chardescription IS NOT INITIAL ).
-      lv_char_exists = |NODEID IN ( SELECT CLFNOBJECTID FROM /BITMYM/I_Classification |
-                    && |WHERE 1 = 1|.
-
       IF iv_charvalue IS NOT INITIAL.
         DATA(lv_charvalue_sql) = CONV string( iv_charvalue ).
         REPLACE ALL OCCURRENCES OF '''' IN lv_charvalue_sql WITH ''''''.
-        lv_char_exists = |{ lv_char_exists } AND charvalue = '{ lv_charvalue_sql }'|.
+        lv_char_predicates = |charvalue = '{ lv_charvalue_sql }'|.
       ENDIF.
 
       IF iv_charid IS NOT INITIAL.
         DATA(lv_charid_sql) = CONV string( iv_charid ).
         REPLACE ALL OCCURRENCES OF '''' IN lv_charid_sql WITH ''''''.
-        lv_char_exists = |{ lv_char_exists } AND charid = '{ lv_charid_sql }'|.
+        lv_char_predicates = COND string(
+          WHEN lv_char_predicates IS INITIAL
+            THEN |charid = '{ lv_charid_sql }'|
+            ELSE |{ lv_char_predicates } AND charid = '{ lv_charid_sql }'| ).
       ENDIF.
 
       IF iv_chardescription IS NOT INITIAL.
         DATA(lv_chardesc_sql) = CONV string( iv_chardescription ).
         REPLACE ALL OCCURRENCES OF '''' IN lv_chardesc_sql WITH ''''''.
-        lv_char_exists = |{ lv_char_exists } AND chardescription = '{ lv_chardesc_sql }'|.
+        lv_char_predicates = COND string(
+          WHEN lv_char_predicates IS INITIAL
+            THEN |chardescription = '{ lv_chardesc_sql }'|
+            ELSE |{ lv_char_predicates } AND chardescription = '{ lv_chardesc_sql }'| ).
       ENDIF.
 
-      lv_char_exists = |{ lv_char_exists } )|.
+      IF lv_char_predicates IS NOT INITIAL.
+        lv_char_exists = |NODEID IN ( SELECT CLFNOBJECTID FROM /BITMYM/I_Classification |
+                     && |WHERE { lv_char_predicates } )|.
+      ENDIF.
     ENDIF.
 
     IF lv_char_exists IS NOT INITIAL.
@@ -565,33 +572,40 @@ CLASS /BITMYM/CL_PRODUCT_CATALOG_QP IMPLEMENTATION.
       lv_where_upper CS 'NODEID IN ( SELECT CLFNOBJECTID FROM /BITMYM/I_CLASSIFICATION'
       OR lv_where_upper CS 'EXISTS ( SELECT 1 FROM /BITMYM/I_CLASSIFICATION' ).
     DATA(lv_char_exists) = CONV string( `` ).
+    DATA(lv_char_predicates) = CONV string( `` ).
 
     IF lv_has_char_where = abap_false
        AND ( iv_charvalue IS NOT INITIAL
           OR iv_charid IS NOT INITIAL
           OR iv_chardescription IS NOT INITIAL ).
-      lv_char_exists = |NODEID IN ( SELECT CLFNOBJECTID FROM /BITMYM/I_Classification |
-                    && |WHERE 1 = 1|.
-
       IF iv_charvalue IS NOT INITIAL.
         DATA(lv_charvalue_sql) = CONV string( iv_charvalue ).
         REPLACE ALL OCCURRENCES OF '''' IN lv_charvalue_sql WITH ''''''.
-        lv_char_exists = |{ lv_char_exists } AND charvalue = '{ lv_charvalue_sql }'|.
+        lv_char_predicates = |charvalue = '{ lv_charvalue_sql }'|.
       ENDIF.
 
       IF iv_charid IS NOT INITIAL.
         DATA(lv_charid_sql) = CONV string( iv_charid ).
         REPLACE ALL OCCURRENCES OF '''' IN lv_charid_sql WITH ''''''.
-        lv_char_exists = |{ lv_char_exists } AND charid = '{ lv_charid_sql }'|.
+        lv_char_predicates = COND string(
+          WHEN lv_char_predicates IS INITIAL
+            THEN |charid = '{ lv_charid_sql }'|
+            ELSE |{ lv_char_predicates } AND charid = '{ lv_charid_sql }'| ).
       ENDIF.
 
       IF iv_chardescription IS NOT INITIAL.
         DATA(lv_chardesc_sql) = CONV string( iv_chardescription ).
         REPLACE ALL OCCURRENCES OF '''' IN lv_chardesc_sql WITH ''''''.
-        lv_char_exists = |{ lv_char_exists } AND chardescription = '{ lv_chardesc_sql }'|.
+        lv_char_predicates = COND string(
+          WHEN lv_char_predicates IS INITIAL
+            THEN |chardescription = '{ lv_chardesc_sql }'|
+            ELSE |{ lv_char_predicates } AND chardescription = '{ lv_chardesc_sql }'| ).
       ENDIF.
 
-      lv_char_exists = |{ lv_char_exists } )|.
+      IF lv_char_predicates IS NOT INITIAL.
+        lv_char_exists = |NODEID IN ( SELECT CLFNOBJECTID FROM /BITMYM/I_Classification |
+                     && |WHERE { lv_char_predicates } )|.
+      ENDIF.
     ENDIF.
 
     IF lv_char_exists IS NOT INITIAL.
