@@ -1,0 +1,13 @@
+{
+  "name": "abapprduct-catalog",
+  "version": "1.0.0",
+  "private": true,
+  "description": "SAP ABAP Product Catalog",
+  "scripts": {
+    "lint": "abaplint",
+    "lint:fix": "abaplint --fix"
+  },
+  "devDependencies": {
+    "@abaplint/cli": "^2.118.4"
+  }
+}
