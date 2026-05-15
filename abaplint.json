@@ -1,0 +1,157 @@
+{
+  "global": {
+    "files": "/src/**/*.*",
+    "exclude": [],
+    "skipGeneratedBOPFInterfaces": false,
+    "skipGeneratedFunctionGroups": false,
+    "skipGeneratedGatewayClasses": false,
+    "skipGeneratedPersistentClasses": false,
+    "skipGeneratedProxyClasses": false,
+    "skipGeneratedProxyInterfaces": false
+  },
+  "dependencies": [
+    {
+      "url": "https://github.com/abaplint/deps",
+      "folder": "/deps",
+      "files": "/src/**/*.*"
+    }
+  ],
+  "syntax": {
+    "version": "v758",
+    "errorNamespace": "^(/BITMYM/|Z|Y|LCL_|TY_|LIF_)",
+    "globalConstants": [],
+    "globalMacros": []
+  },
+  "rules": {
+    "7bit_ascii": true,
+    "avoid_use": {
+      "define": true,
+      "statics": true,
+      "defaultKey": false,
+      "break": true,
+      "testSeams": true,
+      "describeLines": true
+    },
+    "begin_end_names": true,
+    "begin_single_include": true,
+    "chain_mainly_declarations": true,
+    "check_variables": true,
+    "colon_missing_space": true,
+    "commented_code": {
+      "severity": "Warning",
+      "allowIncludeInFugr": true
+    },
+    "contains_tab": true,
+    "double_space": false,
+    "empty_line_in_statement": {
+      "allowChained": true
+    },
+    "empty_statement": true,
+    "empty_structure": {
+      "loop": true,
+      "if": true,
+      "while": true,
+      "case": true,
+      "select": true,
+      "do": true,
+      "at": true,
+      "try": true
+    },
+    "functional_writing": {
+      "ignoreExceptions": true
+    },
+    "global_class": true,
+    "identical_form_names": true,
+    "if_in_if": true,
+    "in_statement_indentation": false,
+    "indentation": {
+      "alignTryCatch": false,
+      "ignoreExceptions": true,
+      "globalClassSkipFirst": false,
+      "ignoreGlobalClassDefinition": false,
+      "ignoreGlobalInterface": false
+    },
+    "inline_data_old_versions": true,
+    "keep_single_parameter_on_one_line": {
+      "length": 120
+    },
+    "keyword_case": {
+      "style": "upper",
+      "ignoreExceptions": true,
+      "ignoreLowerClassImplMethods": true,
+      "ignoreGlobalClassDefinition": false,
+      "ignoreGlobalInterface": false,
+      "ignoreFunctionModuleName": false
+    },
+    "line_length": {
+      "length": 200
+    },
+    "line_only_punc": {
+      "ignoreExceptions": true
+    },
+    "max_one_statement": true,
+    "message_exists": true,
+    "method_length": {
+      "statements": 200,
+      "errorWhenEmpty": false,
+      "ignoreTestClasses": true
+    },
+    "mix_returning": true,
+    "msag_consistency": true,
+    "nesting": {
+      "depth": 6
+    },
+    "no_public_attributes": false,
+    "obsolete_statement": {
+      "refresh": true,
+      "compute": true,
+      "add": true,
+      "subtract": true,
+      "multiply": true,
+      "divide": true,
+      "move": true,
+      "requested": true,
+      "occurs": true,
+      "setExtended": true,
+      "withHeaderLine": true,
+      "fieldSymbolStructure": true,
+      "typePools": true,
+      "load": true,
+      "parameter": true,
+      "ranges": true,
+      "communication": true,
+      "pack": true,
+      "selectWithoutInto": true,
+      "freeMemory": true,
+      "exitFromSQL": true,
+      "sortByFS": true,
+      "callTransformation": false,
+      "regex": true,
+      "occurences": true
+    },
+    "parser_error": true,
+    "preferred_compare_operator": {
+      "badOperators": ["EQ", "NE", "GE", "GT", "LE", "LT"]
+    },
+    "remove_descriptions": false,
+    "sequential_blank": {
+      "lines": 4
+    },
+    "short_case": {
+      "length": 1,
+      "allow": []
+    },
+    "space_before_colon": true,
+    "space_before_dot": {
+      "ignoreGlobalDefinition": true,
+      "ignoreExceptions": true
+    },
+    "start_at_tab": true,
+    "superclass_final": true,
+    "tabl_enhancement_category": true,
+    "unreachable_code": true,
+    "use_new": true,
+    "when_others_last": true,
+    "whitespace_end": true
+  }
+}
